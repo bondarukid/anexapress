@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-/** “B” overlaid on the stack — tuned for vertical opacity blend. */
-export const LOGO_B_PATH =
-  "M9.5 6.85H16.75C19.55 6.85 21.5 8.55 21.5 11.05C21.5 12.65 20.65 13.95 19.35 14.65C21.05 15.35 22.2 16.85 22.2 18.85C22.2 21.65 19.95 23.85 16.85 23.85H9.5V6.85ZM12.4 13.55H16.45C17.85 13.55 18.75 12.75 18.75 11.45C18.75 10.15 17.85 9.35 16.45 9.35H12.4V13.55ZM12.4 21.35H16.95C18.45 21.35 19.35 20.45 19.35 18.95C19.35 17.45 18.45 16.55 16.95 16.55H12.4V21.35Z";
+/** “A” overlaid on the stack — tuned for vertical opacity blend. */
+export const LOGO_A_PATH =
+  "M10.5 23.85L16 6.85L21.5 23.85H19.1L18.15 20.2H13.85L12.9 23.85H10.5ZM14.35 17.6H17.65L16 11.8L14.35 17.6Z";
 
 type LogoMarkProps = {
   gradientId: string;
@@ -10,7 +10,7 @@ type LogoMarkProps = {
 };
 
 /**
- * Three stacked layers with “B” on top — opacity gradient aligned to each band.
+ * Three stacked layers with “A” on top — opacity gradient aligned to each band.
  * Shared by UI logo components and static app icons.
  */
 export function LogoMark({ gradientId, uniColor }: LogoMarkProps): ReactNode {
@@ -42,7 +42,7 @@ export function LogoMark({ gradientId, uniColor }: LogoMarkProps): ReactNode {
         </defs>
       ) : null}
 
-      <path fill={letterFill} fillRule="evenodd" clipRule="evenodd" d={LOGO_B_PATH} />
+      <path fill={letterFill} fillRule="evenodd" clipRule="evenodd" d={LOGO_A_PATH} />
     </g>
   );
 }

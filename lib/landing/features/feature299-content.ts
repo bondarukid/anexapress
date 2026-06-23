@@ -19,7 +19,6 @@ export const feature299Pillars: Feature299Pillar[] = [
 ];
 
 export const feature299Safari: Feature299SafariConfig = {
-  url: "https://bondasteflab.com",
   mode: "simple",
   imageSrc: "/reference/feature299/assets/browser-mockup.png",
 };

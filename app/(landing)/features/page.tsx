@@ -4,7 +4,7 @@ import { Feature211, Feature250, Feature299 } from "@/components/landing/feature
 
 export const metadata: Metadata = {
   title: "Features",
-  description: "Explore BondaStefLab SaaS product capabilities with interactive feature highlights.",
+  description: "Explore AnexaPress product capabilities with interactive feature highlights.",
 };
 
 export default function FeaturesPage() {

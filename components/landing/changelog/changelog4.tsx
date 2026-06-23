@@ -77,7 +77,7 @@ function ChangelogReleasePost({ release }: { release: ChangelogRelease }) {
       />
       <div className="my-4 flex items-center gap-2">
         <Avatar className="border-border size-8 rounded-full border">
-          <AvatarImage src={release.avatarImage} alt="BondaStefLab SaaS Team" />
+          <AvatarImage src={release.avatarImage} alt="AnexaPress Team" />
         </Avatar>
         <time className="text-muted-foreground text-sm" dateTime={release.dateTime}>
           {release.date}

@@ -40,8 +40,8 @@ export function Logo({ className, uniColor }: LogoProps) {
 
   return (
     <svg
-      className={cn("text-foreground h-6 w-auto min-w-[13.5rem]", className)}
-      viewBox="0 0 270 32"
+      className={cn("text-foreground h-6 w-auto min-w-[9.5rem]", className)}
+      viewBox="0 0 190 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"

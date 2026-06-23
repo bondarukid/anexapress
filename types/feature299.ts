@@ -6,7 +6,6 @@ export type Feature299Pillar = {
 };
 
 export type Feature299SafariConfig = {
-  url: string;
   mode: "default" | "simple";
   imageSrc: string;
 };

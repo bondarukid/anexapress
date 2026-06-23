@@ -56,7 +56,7 @@ export default withSentryConfig(withMDX(nextConfig), {
 
   org: "ivan-bondaruk",
 
-  project: "bondasteflab-saas",
+  project: "anexapress",
   sentryUrl: "https://glitchtip.bondarukid.com/",
 
   // Build-time token used only to upload source maps to GlitchTip (generate in your GlitchTip profile).

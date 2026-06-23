@@ -14,7 +14,7 @@ import { GuideHero } from "@/components/docs/mdx/guide-hero";
  * MDX component map for documentation pages.
  *
  * Merges Fumadocs defaults (Callout, Cards, Steps, code blocks) with
- * BondaStefLab SaaS guide components and marketing blocks.
+ * AnexaPress guide components and marketing blocks.
  */
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {

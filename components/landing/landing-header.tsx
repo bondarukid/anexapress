@@ -1,6 +1,7 @@
 "use client";
 
 import { MainHeader } from "@/components/site-shell/main-header";
+import { SITE_NAME } from "@/lib/constants";
 
 const LANDING_NAV = [
   { label: "Home", pageSlug: "/" },
@@ -14,7 +15,7 @@ export default function LandingHeader() {
   return (
     <MainHeader
       config={{
-        logo: { text: "BondasteFlab", href: "/" },
+        logo: { text: SITE_NAME, href: "/" },
         nav: LANDING_NAV,
         showAuthLinks: true,
       }}

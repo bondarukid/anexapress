@@ -16,7 +16,7 @@ export const changelogReleases: ChangelogRelease[] = [
     dateTime: "2026-06-21",
     title: "Emissions SaaS pivot — legacy features removed",
     intro: "We refocused ",
-    introEmphasis: "BondaStefLab SaaS",
+    introEmphasis: "AnexaPress",
     introTrailing:
       " on multi-tenant atmospheric emissions accounting and removed mobile-app analytics, workspace integrations, and the projects feature.",
     heroImage: `${ASSETS}/placeholder-1.svg`,
@@ -204,7 +204,7 @@ export const changelogReleases: ChangelogRelease[] = [
     dateTime: "2026-06-08",
     title: "Platform foundation — auth, workspaces, and invitations",
     intro: "The first production-ready ",
-    introEmphasis: "BondaStefLab SaaS platform layer",
+    introEmphasis: "AnexaPress platform layer",
     introTrailing:
       " landed with authentication, workspaces, invitations, notifications, and observability built on Supabase and Next.js.",
     heroImage: `${ASSETS}/placeholder-2.svg`,

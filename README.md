@@ -1,4 +1,4 @@
-# Bonda Stef / Bio-Asset OS
+# AnexaPress
 
 **Developer:** Ivan Bondaruk, SaaS Expert  
 **Idea author:** Yurii Stefanenko
@@ -11,7 +11,7 @@ Multi-tenant reference SaaS template for building B2B products that need workspa
 
 ## SaaS Idea
 
-**Bonda Stef / Bio-Asset OS** is a production-ready platform layer for teams shipping B2B SaaS. It gives you multi-tenant workspaces, onboarding, team management, and a permission-based access system (PBAC) out of the box — so you can focus on your product domain instead of rebuilding tenancy and access control.
+**AnexaPress** is a production-ready platform layer for teams shipping B2B SaaS. It gives you multi-tenant workspaces, onboarding, team management, and a permission-based access system (PBAC) out of the box — so you can focus on your product domain instead of rebuilding tenancy and access control.
 
 Each workspace has an owner, a URL slug, and isolated data enforced by Postgres Row Level Security. Members join via email invitation or an 8-character join code. Roles map to atomic permission slugs; individual members can receive custom permission overrides when needed.
 
@@ -121,7 +121,7 @@ Default permission keys:
 ## Project structure
 
 ```
-BondaStefLab-SaaS/
+anexapress/
 ├── package.json
 ├── .env.example
 ├── next.config.ts
@@ -212,7 +212,7 @@ Optional:
 
 ```bash
 git clone <repository-url>
-cd BondaStefLab-SaaS
+cd anexapress
 npm install
 ```
 
@@ -229,10 +229,10 @@ Set variables in `.env.local`:
 | `SUPABASE_URL` | Supabase project URL (Dashboard → Project Settings → API) |
 | `SUPABASE_ANON_KEY` | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key — server-only, never expose to the client |
-| `NEXT_PUBLIC_SITE_URL` | Apex / marketing URL label (e.g. `http://localhost:3000` or `https://bondasteflab.com`) |
-| `NEXT_PUBLIC_PLATFORM_URL` | Platform SaaS URL (e.g. `http://platform.localhost:3000` or `https://platform.bondasteflab.com`) |
+| `NEXT_PUBLIC_SITE_URL` | Apex / marketing URL label (e.g. `http://localhost:3000` or `https://anexapress.com`) |
+| `NEXT_PUBLIC_PLATFORM_URL` | Platform SaaS URL (e.g. `http://platform.localhost:3000` or `https://platform.anexapress.com`) |
 | `PLATFORM_HOST` | Platform hostname for proxy routing (e.g. `platform.localhost`) |
-| `APEX_HOST` | Apex hostname that redirects to platform (e.g. `localhost` in dev, `bondasteflab.com` in prod) |
+| `APEX_HOST` | Apex hostname that redirects to platform (e.g. `localhost` in dev, `anexapress.com` in prod) |
 | `NEXT_PUBLIC_DOCS_URL` | Docs site URL (e.g. `http://docs.localhost:3000`) |
 | `DOCS_HOST` | Docs hostname for proxy (e.g. `docs.localhost`) |
 | `FIREBASE_*` | Firebase web config for analytics/performance (optional) |
@@ -348,19 +348,19 @@ Point all hostnames at the same deployment:
 
 | DNS record | Target |
 |------------|--------|
-| `platform.bondasteflab.com` | Your hosting (CNAME or A) |
-| `bondasteflab.com` | Same hosting (apex redirects to platform) |
-| `docs.bondasteflab.com` | Same hosting (docs subdomain) |
+| `platform.anexapress.com` | Your hosting (CNAME or A) |
+| `anexapress.com` | Same hosting (apex redirects to platform) |
+| `docs.anexapress.com` | Same hosting (docs subdomain) |
 
 Example production env:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://bondasteflab.com
-NEXT_PUBLIC_PLATFORM_URL=https://platform.bondasteflab.com
-PLATFORM_HOST=platform.bondasteflab.com
-APEX_HOST=bondasteflab.com
-NEXT_PUBLIC_DOCS_URL=https://docs.bondasteflab.com
-DOCS_HOST=docs.bondasteflab.com
+NEXT_PUBLIC_SITE_URL=https://anexapress.com
+NEXT_PUBLIC_PLATFORM_URL=https://platform.anexapress.com
+PLATFORM_HOST=platform.anexapress.com
+APEX_HOST=anexapress.com
+NEXT_PUBLIC_DOCS_URL=https://docs.anexapress.com
+DOCS_HOST=docs.anexapress.com
 ```
 
 ### Supabase Auth URLs
@@ -369,8 +369,8 @@ In **Supabase Dashboard → Authentication → URL Configuration**:
 
 | Setting | Value |
 |---------|--------|
-| Site URL | `https://platform.bondasteflab.com` |
-| Redirect URLs | `https://platform.bondasteflab.com/auth/callback` |
+| Site URL | `https://platform.anexapress.com` |
+| Redirect URLs | `https://platform.anexapress.com/auth/callback` |
 | Redirect URLs (local dev) | `http://platform.localhost:3000/auth/callback` |
 
 Auth cookies are scoped to the platform host; the apex domain only redirects and does not need a session.
