@@ -62,6 +62,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.mzstatic.com" },
     ],
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+    proxyClientMaxBodySize: "6mb",
+  },
 };
 
 export default withSentryConfig(withMDX(nextConfig), {

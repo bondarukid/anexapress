@@ -61,11 +61,10 @@ function isLoginRecoveryScreen(path: string, authReason: string | null) {
 }
 
 /**
- * Apex → platform uses a 301 for normal page loads only.
- * POST / RSC / server-action requests must not be redirected — Next.js expects
- * `text/x-component`, not an HTML redirect body ("unexpected response" on login).
+ * Navigation redirects only — POST, RSC, and Server Actions must pass through.
+ * Redirecting those requests makes the client show "An unexpected response was received from the server."
  */
-function shouldRedirectApexToPlatform(request: NextRequest): boolean {
+function shouldApplyProxyRedirect(request: NextRequest): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return false;
   }
@@ -84,6 +83,10 @@ function redirectPreservingCookies(
   destination: string,
   sessionResponse: NextResponse,
 ) {
+  if (!shouldApplyProxyRedirect(request)) {
+    return sessionResponse;
+  }
+
   const url = new URL(destination, request.nextUrl.origin);
   const redirectResponse = NextResponse.redirect(url);
   const cookies = sessionResponse.headers.getSetCookie?.() ?? [];
@@ -241,7 +244,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(docsPath, docsBase));
     }
 
-    if (shouldRedirectApexToPlatform(request)) {
+    if (shouldApplyProxyRedirect(request)) {
       const platformBase = getPlatformSiteUrl(host);
       const destination = new URL(`${path}${request.nextUrl.search}`, platformBase);
       return NextResponse.redirect(destination, 301);
