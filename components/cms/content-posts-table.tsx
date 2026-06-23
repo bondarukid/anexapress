@@ -145,8 +145,7 @@ export function ContentPostsTable({
                     size="sm"
                     onClick={() =>
                       openPostEditor(activeWorkspace, post.id, {
-                        siteDashboardBase:
-                          lockSiteFilter ? siteDashboard?.siteDashboardBase : undefined,
+                        siteId: lockSiteFilter ? siteDashboard?.activeSite.id : post.siteId,
                       })
                     }
                   >

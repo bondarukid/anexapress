@@ -2,6 +2,7 @@
  * Build tenant-prefixed dashboard paths: `/{slug}/dashboard/...` or `/{parent}/{child}/dashboard/...`
  */
 import type { WorkspaceSummary } from "@/types/workspace";
+import { coercePathname } from "@/lib/routing/normalize-pathname";
 import {
   buildWorkspacePath,
   buildWorkspacePathKey,
@@ -56,21 +57,24 @@ export function resolveDashboardHomePath(input: string | WorkspacePathInput): st
 export { buildWorkspacePathKey, parseWorkspacePathKey, isWorkspaceDashboardPath, isWorkspaceInvitePath };
 
 /** Parse `/{slug}/dashboard/...` or `/{parent}/{child}/dashboard/...`. */
-export function parseWorkspaceDashboardPath(pathname: string): {
+export function parseWorkspaceDashboardPath(pathname: string | null | undefined): {
   workspaceSlug: string;
   childSlug: string | null;
   restPath: string;
 } | null {
-  const parsed = parseWorkspacePath(pathname);
+  const path = coercePathname(pathname);
+  if (!path) return null;
+
+  const parsed = parseWorkspacePath(path);
   if (!parsed) return null;
 
   const dashboardPrefix = parsed.childSlug
     ? `/${parsed.parentSlug}/${parsed.childSlug}/dashboard`
     : `/${parsed.parentSlug}/dashboard`;
 
-  if (!pathname.startsWith(dashboardPrefix)) return null;
+  if (!path.startsWith(dashboardPrefix)) return null;
 
-  const restPath = pathname.slice(dashboardPrefix.length);
+  const restPath = path.slice(dashboardPrefix.length);
   return {
     workspaceSlug: parsed.parentSlug,
     childSlug: parsed.childSlug,

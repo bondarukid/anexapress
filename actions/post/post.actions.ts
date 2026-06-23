@@ -19,7 +19,7 @@ import {
   revertToVersion,
   deletePost,
 } from "@/services/post.service";
-import type { PostActionResult } from "@/types/post";
+import type { PostActionResult, RevertedDraftData } from "@/types/post";
 
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -113,7 +113,9 @@ export async function createSnapshotAction(
   return createSnapshot(userId, parsed.data.workspaceId, parsed.data.postId);
 }
 
-export async function revertVersionAction(input: unknown): Promise<PostActionResult> {
+export async function revertVersionAction(
+  input: unknown,
+): Promise<PostActionResult<RevertedDraftData>> {
   const userId = await getUserId();
   if (!userId) {
     return { success: false, error: "Session expired. Please sign in again." };

@@ -3,6 +3,7 @@ import {
   workspacePath,
 } from "@/lib/routing/workspace-paths";
 import { buildWorkspacePath, parseWorkspacePathKey } from "@/lib/workspace-family/paths";
+import { coercePathname } from "@/lib/routing/normalize-pathname";
 
 /**
  * Maps legacy `/dashboard/*` paths to tenant-prefixed dashboard URLs.
@@ -46,11 +47,14 @@ export function buildLegacyDashboardPathname(pathSegments: string[] | undefined)
 }
 
 /** Path after `/{slug}/dashboard` or `/{parent}/{child}/dashboard` on tenant URLs. */
-export function tenantDashboardRestSuffix(pathname: string): string {
-  const childMatch = pathname.match(/^\/[^/]+\/[^/]+\/dashboard(\/.*)?$/);
+export function tenantDashboardRestSuffix(pathname: string | null | undefined): string {
+  const path = coercePathname(pathname);
+  if (!path) return "";
+
+  const childMatch = path.match(/^\/[^/]+\/[^/]+\/dashboard(\/.*)?$/);
   if (childMatch) return childMatch[1] ?? "";
 
-  const rootMatch = pathname.match(/^\/[^/]+\/dashboard(\/.*)?$/);
+  const rootMatch = path.match(/^\/[^/]+\/dashboard(\/.*)?$/);
   return rootMatch?.[1] ?? "";
 }
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { sanitizeTiptapContent } from "@/lib/cms/sanitize-tiptap-content";
+
 const tiptapMarkSchema: z.ZodType<{
   type: string;
   attrs?: Record<string, unknown>;
@@ -26,10 +28,12 @@ const tiptapNodeSchema: z.ZodType<{
   }),
 );
 
-/** Sanity check for Novel/Tiptap JSON before persisting. */
-export const tiptapContentSchema = z.object({
+const tiptapDocSchema = z.object({
   type: z.literal("doc"),
   content: z.array(tiptapNodeSchema).optional(),
 });
+
+/** Sanity check for Novel/Tiptap JSON before persisting. */
+export const tiptapContentSchema = z.preprocess(sanitizeTiptapContent, tiptapDocSchema);
 
 export type TiptapContentInput = z.infer<typeof tiptapContentSchema>;

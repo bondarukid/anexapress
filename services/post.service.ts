@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/server";
 import { syncPostBlocks } from "@/lib/cms/sync-post-blocks";
+import { parseSeoSnapshot } from "@/lib/cms/parse-seo-snapshot";
 import {
   mapPostRow,
   mapPostVersionRow,
@@ -18,6 +19,7 @@ import type {
   PostSummary,
   PostVersionSummary,
   PublishedPost,
+  RevertedDraftData,
 } from "@/types/post";
 import type { TiptapContent } from "@/types/tiptap";
 
@@ -403,7 +405,7 @@ export async function revertToVersion(
   workspaceId: string,
   postId: string,
   versionId: string,
-): Promise<PostActionResult> {
+): Promise<PostActionResult<RevertedDraftData>> {
   const guard = await requireWorkspacePermission(workspaceId, PERM_CONTENT_CREATE);
   if (!guard.success) {
     return { success: false, error: guard.error, code: "forbidden" };
@@ -463,7 +465,14 @@ export async function revertToVersion(
 
   await syncPostBlocks(postId, post.current_draft_version_id, source.content as TiptapContent);
 
-  return { success: true };
+  return {
+    success: true,
+    data: {
+      content: source.content as TiptapContent,
+      title: source.title,
+      seo: parseSeoSnapshot(snapshot),
+    },
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/server";
 import { mapSiteRow } from "@/lib/cms/site-mappers";
 import { ENABLE_MULTI_SITE } from "@/lib/config/feature-flags";
+import { resolveWorkspaceByIdForUser } from "@/lib/workspace-family/resolve";
 import { PERM_CONTENT_CREATE } from "@/lib/team/permissions";
 import { requireWorkspacePermission } from "@/services/team";
 import type { CreateSiteInput, UpdateSiteSettingsInput } from "@/schemas/site.schema";
@@ -41,6 +42,36 @@ export async function getSiteById(workspaceId: string, siteId: string): Promise<
 
   if (error || !data) return null;
   return mapSiteRow(data);
+}
+
+type SiteWithWorkspaceAccess = {
+  site: Site;
+  workspace: NonNullable<Awaited<ReturnType<typeof resolveWorkspaceByIdForUser>>>;
+};
+
+/**
+ * Loads a site by id when the user is a member of its workspace (RLS + membership check).
+ */
+export async function getSiteAccessibleToUser(
+  userId: string,
+  siteId: string,
+): Promise<SiteWithWorkspaceAccess | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sites")
+    .select(SITE_SELECT)
+    .eq("id", siteId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const workspace = await resolveWorkspaceByIdForUser(userId, data.workspace_id);
+  if (!workspace) return null;
+
+  return {
+    site: mapSiteRow(data),
+    workspace,
+  };
 }
 
 export async function provisionDefaultSite(

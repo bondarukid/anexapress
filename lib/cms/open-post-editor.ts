@@ -1,25 +1,21 @@
-import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
+import { editorPathFromSummary } from "@/lib/routing/editor-paths";
 import type { WorkspaceSummary } from "@/types/workspace";
 
+type OpenPostEditorOptions = {
+  siteId?: string | null;
+};
+
 /**
- * Opens the fullscreen post editor in a new browser window.
+ * Navigates to the standalone post editor page (outside dashboard shell).
  */
 export function openPostEditor(
   workspace: WorkspaceSummary,
   postId: string,
-  options?: { siteDashboardBase?: string },
+  options?: OpenPostEditorOptions,
 ): void {
-  const url =
-    options?.siteDashboardBase
-      ? `${options.siteDashboardBase}/content/editor/${postId}`
-      : workspacePathFromSummary(workspace, `/content/editor/${postId}`);
-  const popup = window.open(
-    url,
-    `post-editor-${postId}`,
-    "noopener,noreferrer,width=1400,height=900",
-  );
+  const suffix = options?.siteId
+    ? `/site/${options.siteId}/post/${postId}`
+    : `/post/${postId}`;
 
-  if (!popup) {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
+  window.location.assign(editorPathFromSummary(workspace, suffix));
 }

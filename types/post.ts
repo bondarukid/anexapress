@@ -71,6 +71,12 @@ export type PostEditorData = {
   canCreate: boolean;
 };
 
+export type RevertedDraftData = {
+  content: TiptapContent;
+  title: string;
+  seo: import("@/schemas/seo.schema").SeoFieldsInput;
+};
+
 export type PostActionResult<T = undefined> =
   | ({ success: true } & (T extends undefined ? object : { data: T }))
   | { success: false; error: string; code?: "not_found" | "forbidden" | "validation" };

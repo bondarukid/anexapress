@@ -6,6 +6,11 @@ export function normalizePathname(pathname: string): string {
   return pathname;
 }
 
+/** Coerce nullable path values before regex parsing (e.g. `usePathname()` during hydration). */
+export function coercePathname(pathname: string | null | undefined): string {
+  return typeof pathname === "string" ? pathname : "";
+}
+
 export function isSameRedirectPath(current: string, destination: string): boolean {
   return normalizePathname(current) === normalizePathname(destination);
 }

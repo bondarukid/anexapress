@@ -1,4 +1,5 @@
 import type { ResolvedWorkspacePath } from "@/lib/workspace-family/types";
+import { coercePathname } from "@/lib/routing/normalize-pathname";
 
 const ROOT_DASHBOARD_RE = /^\/([^/]+)\/dashboard(\/.*)?$/;
 const CHILD_DASHBOARD_RE = /^\/([^/]+)\/([^/]+)\/dashboard(\/.*)?$/;
@@ -51,8 +52,11 @@ export function parseWorkspacePathKey(pathKey: string): {
 /**
  * Parse tenant dashboard or invite pathname into workspace path segments.
  */
-export function parseWorkspacePath(pathname: string): ResolvedWorkspacePath | null {
-  const childDashboard = pathname.match(CHILD_DASHBOARD_RE);
+export function parseWorkspacePath(pathname: string | null | undefined): ResolvedWorkspacePath | null {
+  const path = coercePathname(pathname);
+  if (!path) return null;
+
+  const childDashboard = path.match(CHILD_DASHBOARD_RE);
   if (childDashboard) {
     return {
       parentSlug: childDashboard[1],
@@ -61,7 +65,7 @@ export function parseWorkspacePath(pathname: string): ResolvedWorkspacePath | nu
     };
   }
 
-  const rootDashboard = pathname.match(ROOT_DASHBOARD_RE);
+  const rootDashboard = path.match(ROOT_DASHBOARD_RE);
   if (rootDashboard) {
     return {
       parentSlug: rootDashboard[1],
@@ -70,7 +74,7 @@ export function parseWorkspacePath(pathname: string): ResolvedWorkspacePath | nu
     };
   }
 
-  const childInvite = pathname.match(CHILD_INVITE_RE);
+  const childInvite = path.match(CHILD_INVITE_RE);
   if (childInvite) {
     return {
       parentSlug: childInvite[1],
@@ -79,7 +83,7 @@ export function parseWorkspacePath(pathname: string): ResolvedWorkspacePath | nu
     };
   }
 
-  const rootInvite = pathname.match(ROOT_INVITE_RE);
+  const rootInvite = path.match(ROOT_INVITE_RE);
   if (rootInvite) {
     return {
       parentSlug: rootInvite[1],
@@ -92,13 +96,15 @@ export function parseWorkspacePath(pathname: string): ResolvedWorkspacePath | nu
 }
 
 /** Whether pathname is under tenant dashboard (root or child). */
-export function isWorkspaceDashboardPath(pathname: string): boolean {
-  return ROOT_DASHBOARD_RE.test(pathname) || CHILD_DASHBOARD_RE.test(pathname);
+export function isWorkspaceDashboardPath(pathname: string | null | undefined): boolean {
+  const path = coercePathname(pathname);
+  return ROOT_DASHBOARD_RE.test(path) || CHILD_DASHBOARD_RE.test(path);
 }
 
 /** Whether pathname is a workspace invite landing. */
-export function isWorkspaceInvitePath(pathname: string): boolean {
-  return ROOT_INVITE_RE.test(pathname) || CHILD_INVITE_RE.test(pathname);
+export function isWorkspaceInvitePath(pathname: string | null | undefined): boolean {
+  const path = coercePathname(pathname);
+  return ROOT_INVITE_RE.test(path) || CHILD_INVITE_RE.test(path);
 }
 
 export function workspaceInvitePath(input: WorkspacePathInput, joinCode: string): string {

@@ -19,18 +19,21 @@ export type ParsedSiteDashboardPath = {
 };
 
 /** Whether pathname is under `/dashboard/sites/[siteId]/...`. */
-export function isSiteDashboardPath(pathname: string): boolean {
+export function isSiteDashboardPath(pathname: string | null | undefined): boolean {
   const parsed = parseWorkspaceDashboardPath(pathname);
   if (!parsed) return false;
   return parsed.restPath.startsWith("/sites/");
 }
 
 /** Parse site dashboard segment from a tenant dashboard pathname. */
-export function parseSiteDashboardPath(pathname: string): ParsedSiteDashboardPath | null {
+export function parseSiteDashboardPath(
+  pathname: string | null | undefined,
+): ParsedSiteDashboardPath | null {
   const dashboard = parseWorkspaceDashboardPath(pathname);
   if (!dashboard) return null;
 
-  const match = dashboard.restPath.match(SITE_DASHBOARD_RE);
+  const restPath = dashboard.restPath ?? "";
+  const match = restPath.match(SITE_DASHBOARD_RE);
   if (!match) return null;
 
   const siteId = match[1];

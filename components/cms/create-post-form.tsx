@@ -64,7 +64,7 @@ export function CreatePostForm({
       }
 
       toast.success("Post created");
-      openPostEditor(workspace, result.data.postId, { siteDashboardBase });
+      openPostEditor(workspace, result.data.postId, { siteId });
       router.push(
         siteDashboardBase
           ? `${siteDashboardBase}/content`

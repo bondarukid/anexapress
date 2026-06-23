@@ -44,7 +44,7 @@ import {
   removeSiteDomainSchema,
   setPrimarySiteDomainSchema,
 } from "@/schemas/site-domain.schema";
-import type { SiteActionResult } from "@/types/site";
+import type { RevertedDraftData, SiteActionResult } from "@/types/site";
 
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -154,7 +154,9 @@ export async function createSitePageSnapshotAction(input: unknown) {
   );
 }
 
-export async function revertSitePageVersionAction(input: unknown): Promise<SiteActionResult> {
+export async function revertSitePageVersionAction(
+  input: unknown,
+): Promise<SiteActionResult<RevertedDraftData>> {
   const userId = await getUserId();
   if (!userId) return { success: false, error: "Session expired." };
 

@@ -5,6 +5,7 @@ import {
 } from "@/lib/cms/site-mappers";
 import { seoInputToDb, seoToSnapshot } from "@/lib/cms/post-mappers";
 import { syncSitePageBlocks } from "@/lib/cms/sync-site-page-blocks";
+import { parseSeoSnapshot } from "@/lib/cms/parse-seo-snapshot";
 import {
   PERM_CONTENT_CREATE,
   PERM_CONTENT_PUBLISH,
@@ -16,6 +17,7 @@ import type {
 } from "@/schemas/site.schema";
 import type {
   PublishedSitePage,
+  RevertedDraftData,
   SiteActionResult,
   SitePageEditorData,
   SitePageSummary,
@@ -374,7 +376,7 @@ export async function revertSitePageVersion(
   siteId: string,
   pageId: string,
   versionId: string,
-): Promise<SiteActionResult> {
+): Promise<SiteActionResult<RevertedDraftData>> {
   const guard = await requireWorkspacePermission(workspaceId, PERM_CONTENT_CREATE);
   if (!guard.success) return { success: false, error: guard.error, code: "forbidden" };
 
@@ -423,7 +425,15 @@ export async function revertSitePageVersion(
     .eq("id", pageId);
 
   await syncSitePageBlocks(pageId, page.current_draft_version_id, source.content as TiptapContent);
-  return { success: true };
+
+  return {
+    success: true,
+    data: {
+      content: source.content as TiptapContent,
+      title: source.title,
+      seo: parseSeoSnapshot(snapshot),
+    },
+  };
 }
 
 export async function listSitePageVersions(

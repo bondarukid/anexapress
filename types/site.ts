@@ -107,6 +107,12 @@ export type PublishedSitePage = SitePage & {
   ogImageUrl: string | null;
 };
 
+export type RevertedDraftData = {
+  content: import("@/types/tiptap").TiptapContent;
+  title: string;
+  seo: import("@/schemas/seo.schema").SeoFieldsInput;
+};
+
 export type SiteActionResult<T = undefined> =
   | ({ success: true } & (T extends undefined ? object : { data: T }))
   | { success: false; error: string; code?: "not_found" | "forbidden" | "validation" };

@@ -1,15 +1,9 @@
-import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
-import { generateHTML } from "@tiptap/html";
+import "@/app/cms-content.css";
 
+import { cmsContentTypographyClassName } from "@/lib/cms/content-typography";
+import { renderTiptapHtml } from "@/lib/cms/render-tiptap-html";
+import { cn } from "@/lib/utils";
 import type { TiptapContent } from "@/types/tiptap";
-
-const renderExtensions = [
-  StarterKit,
-  Image,
-  Link.configure({ openOnClick: true }),
-];
 
 type PostRendererProps = {
   content: TiptapContent;
@@ -20,11 +14,11 @@ type PostRendererProps = {
  * Renders published Tiptap JSON as semantic HTML with typography styles.
  */
 export function PostRenderer({ content, className }: PostRendererProps) {
-  const html = generateHTML(content, renderExtensions);
+  const html = renderTiptapHtml(content);
 
   return (
-    <article
-      className={className}
+    <div
+      className={cmsContentTypographyClassName(cn("cms-content", className))}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

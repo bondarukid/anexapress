@@ -1,0 +1,13 @@
+import { SitePageEditorPage } from "@/components/cms/site-dashboard-pages";
+
+export const metadata = {
+  title: "Page editor",
+};
+
+type PageProps = {
+  params: Promise<{ workspaceSlug: string; slug: string; siteId: string; pageId: string }>;
+};
+
+export default function ChildEditorSitePageRoute(props: PageProps) {
+  return <SitePageEditorPage params={props.params} />;
+}

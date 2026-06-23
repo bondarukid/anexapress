@@ -13,6 +13,12 @@ import {
 } from "@/lib/cms/site-host";
 import { isDocsHost, getDocsSiteUrl } from "@/lib/docs/host";
 import { getPlatformSiteUrl, isApexHost } from "@/lib/platform/host";
+import {
+  applyTenantEditorSuffix,
+  isWorkspaceEditorPath,
+  parseWorkspaceEditorPath,
+  tenantEditorRestSuffix,
+} from "@/lib/routing/editor-paths";
 import { DASHBOARD_ENTRY_PATH, isWorkspaceInvitePath } from "@/lib/routing/workspace-paths";
 import {
   buildWorkspacePathKey,
@@ -157,7 +163,11 @@ async function getDefaultWorkspaceSlug(
 
   const cookieSlug = request.cookies.get(ACTIVE_WORKSPACE_SLUG_COOKIE)?.value;
   if (cookieSlug) {
-    const match = rows.find((row) => workspacePathKeyFromRow(row) === cookieSlug);
+    const match = rows.find((row) => {
+      const pathKey = workspacePathKeyFromRow(row);
+      const workspace = Array.isArray(row.workspaces) ? row.workspaces[0] : row.workspaces;
+      return pathKey === cookieSlug || workspace?.slug === cookieSlug;
+    });
     const pathKey = match ? workspacePathKeyFromRow(match) : null;
     if (pathKey) return pathKey;
   }
@@ -190,7 +200,7 @@ async function tryCustomSiteDomainRewrite(
   const resolved = await lookupSiteByDomain(supabase, normalizeHostname(host));
   if (!resolved) return null;
 
-  if (path.startsWith("/api/") || path.includes("/dashboard") || path.startsWith("/login")) {
+  if (path.startsWith("/api/") || path.includes("/dashboard") || path.includes("/editor") || path.startsWith("/login")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -201,10 +211,33 @@ async function tryCustomSiteDomainRewrite(
 }
 
 function getWorkspacePathKeyFromPath(path: string): string | null {
-  if (!isTenantDashboardPath(path)) return null;
-  const parsed = parseWorkspacePath(path);
+  const parsed = parseWorkspaceEditorPath(path) ?? parseWorkspacePath(path);
   if (!parsed) return null;
   return buildWorkspacePathKey(parsed.parentSlug, parsed.childSlug);
+}
+
+function isTenantProtectedPath(path: string): boolean {
+  return isTenantDashboardPath(path) || isWorkspaceEditorPath(path);
+}
+
+function tenantRestSuffix(path: string): string {
+  if (isWorkspaceEditorPath(path)) {
+    return tenantEditorRestSuffix(path);
+  }
+  return tenantDashboardRestSuffix(path);
+}
+
+function applyTenantRestSuffix(targetPathKey: string, restSuffix: string, path: string): string {
+  if (isWorkspaceEditorPath(path)) {
+    return applyTenantEditorSuffix(targetPathKey, restSuffix);
+  }
+  return applyTenantDashboardSuffix(
+    buildWorkspacePath({
+      parentSlug: parseWorkspacePathKey(targetPathKey).parentSlug,
+      childSlug: parseWorkspacePathKey(targetPathKey).childSlug,
+    }),
+    restSuffix,
+  );
 }
 
 export async function proxy(request: NextRequest) {
@@ -278,6 +311,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const { response, user } = await updateSession(request);
+  response.headers.set("x-pathname", path);
 
   if (isWorkspaceInvitePath(path) && code) {
     setPendingJoinCodeOnResponse(response, code);
@@ -287,7 +321,7 @@ export async function proxy(request: NextRequest) {
     path === DASHBOARD_ENTRY_PATH ||
     path === `${DASHBOARD_ENTRY_PATH}/` ||
     path.startsWith(`${DASHBOARD_ENTRY_PATH}/`);
-  const workspaceSlugFromPath = isTenantDashboardPath(path)
+  const workspaceSlugFromPath = isTenantProtectedPath(path)
     ? getWorkspacePathKeyFromPath(path)
     : null;
   const isProtectedDashboard = isPersonalDashboardPath || workspaceSlugFromPath !== null;
@@ -331,7 +365,7 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!defaultSlug && workspaceSlugFromPath) {
-      const restSuffix = tenantDashboardRestSuffix(path);
+      const restSuffix = tenantRestSuffix(path);
       const resolved = await resolveDashboardEntryRedirectInMiddleware(
         request,
         response,
@@ -340,7 +374,11 @@ export async function proxy(request: NextRequest) {
       );
 
       if (resolved.redirect) {
-        const destination = applyTenantDashboardSuffix(resolved.redirect, restSuffix);
+        const redirectParsed = parseWorkspacePath(resolved.redirect);
+        const pathKey = redirectParsed
+          ? buildWorkspacePathKey(redirectParsed.parentSlug, redirectParsed.childSlug)
+          : (workspaceSlugFromPath ?? "");
+        const destination = applyTenantRestSuffix(pathKey, restSuffix, path);
         if (!isSameRedirectPath(path, destination)) {
           return redirectPreservingCookies(request, destination, response);
         }
@@ -358,14 +396,8 @@ export async function proxy(request: NextRequest) {
       workspaceSlugFromPath &&
       workspaceSlugFromPath !== defaultSlug
     ) {
-      const restSuffix = tenantDashboardRestSuffix(path);
-      const destination = applyTenantDashboardSuffix(
-        buildWorkspacePath({
-          parentSlug: parseWorkspacePathKey(defaultSlug).parentSlug,
-          childSlug: parseWorkspacePathKey(defaultSlug).childSlug,
-        }),
-        restSuffix,
-      );
+      const restSuffix = tenantRestSuffix(path);
+      const destination = applyTenantRestSuffix(defaultSlug, restSuffix, path);
       if (!isSameRedirectPath(path, destination)) {
         return redirectPreservingCookies(request, destination, response);
       }
