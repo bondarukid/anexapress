@@ -1,0 +1,1 @@
+export const TEAM_MEMBERS_SKELETON_ROW_COUNT = 5;

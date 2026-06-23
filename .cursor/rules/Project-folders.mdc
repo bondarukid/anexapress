@@ -1,0 +1,605 @@
+---
+alwaysApply: true
+---
+
+Архитектура папок в Next.js + TypeScript (Zod + Supabase)
+Ниже — простое и практичное объяснение, для чего нужны папки lib, actions, services, types, schemas, что в них должно быть и какие правила стоит соблюдать.
+
+Общее правило
+Главный принцип: разделяй ответственность.
+Каждая папка отвечает за свой слой проекта:
+
+types — что это за данные
+
+schemas — как валидировать данные
+
+services — как работать с БД/API
+
+actions — как вызывать операции из UI
+
+lib — какие инструменты и утилиты помогают всему этому работать
+
+Чем чётче ты разделяешь эти слои, тем проще масштабировать проект, добавлять новые фичи и не ломать старое.
+
+Папка types/
+Для чего нужна
+types/ — это описание данных на TypeScript.
+Там хранятся:
+
+интерфейсы
+
+type-алиасы
+
+типы сущностей (User, Project, Profile и т.д.)
+
+иногда типы, выведенные из Zod через z.infer<>
+
+Что там должно быть
+Примеры:
+
+ts
+// types/project.ts
+export type Project = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};
+
+// types/auth.ts
+export type User = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+Правила
+Типы сущностей — только в types/.
+Если у тебя есть база с таблицами users, projects, то типы User, Project живут тут.
+
+Не дублируй типы.
+Если тип уже есть в types/, импортируй его, а не переписывай заново.
+
+Если тип выводится из Zod, можно:
+
+либо хранить схему в schemas/, а тип выводить в том же файле и экспортировать
+
+либо определить тип в types/, а схему в schemas/ базироваться на нём
+
+Пример вывода из Zod:
+
+ts
+// schemas/project.schema.ts
+import { z } from "zod";
+
+export const createProjectSchema = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional(),
+});
+
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+Папка schemas/
+Для чего нужна
+schemas/ — это Zod-схемы валидации.
+Там описывается:
+
+какие данные принимаются от пользователя
+
+как они валидируются
+
+какие ошибки возвращаются
+
+Схемы используются в:
+
+server actions
+
+API route handlers
+
+формах
+
+anywhere, где нужна валидация входящих данных
+
+Что там должно быть
+ts
+// schemas/auth.schema.ts
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  full_name: z.string().min(2).max(100),
+});
+ts
+// schemas/project.schema.ts
+import { z } from "zod";
+
+export const createProjectSchema = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional(),
+});
+
+export const updateProjectSchema = createProjectSchema.partial();
+Правила
+Схемы — в schemas/, типы сущностей — в types/.
+Не смешивай их.
+
+Одна схема = одна логическая операция.
+Например:
+
+createProjectSchema
+
+updateProjectSchema
+
+loginSchema
+
+registerSchema
+
+Используй .partial(), .pick(), .omit() для вариаций:
+
+обновление часто использует частичную версию схемы создания.
+
+Выводи типы из схем через z.infer<>, если они нужны в других местах.
+
+Папка services/
+Для чего нужна
+services/ — это бизнес-логика работы с внешними сервисами: Supabase, Stripe, email, файлы и т.д.
+Там живут функции, которые:
+
+делают запросы к базе
+
+работают с SDK
+
+инкапсулируют логику доступа к данным
+
+Это слой между actions и внешним миром.
+
+Что там должно быть
+ts
+// services/supabase/admin.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+ts
+// services/project.service.ts
+import { supabaseAdmin } from "./supabase/admin";
+import type { CreateProjectInput } from "../schemas/project.schema";
+import type { Project } from "../types/project";
+
+export async function createProject(
+  userId: string,
+  input: CreateProjectInput
+): Promise<Project> {
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .insert({
+      user_id: userId,
+      name: input.name,
+      description: input.description ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function getProjectsByUserId(userId: string): Promise<Project[]> {
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+ts
+// services/profile.service.ts
+import { supabaseAdmin } from "./supabase/admin";
+import type { User } from "../types/auth";
+
+export async function getProfileByUserId(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 = нет записи
+  return data;
+}
+
+export async function updateProfile(
+  userId: string,
+  updates: { full_name?: string; avatar_url?: string }
+) {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .upsert({ user_id: userId, ...updates }, { onConflict: "user_id" })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+Правила
+Services не знают про UI.
+Они не знают про формы, компоненты, server actions. Они только:
+
+принимают данные
+
+делают операцию с БД/API
+
+возвращают результат
+
+Services могут кидать ошибки, а actions их ловит и возвращает пользователю в понятном виде.
+
+Каждая сущность — свой сервис (или файл):
+
+project.service.ts
+
+profile.service.ts
+
+auth.service.ts
+
+file.service.ts
+
+Не клади в services/:
+
+client-логика (это lib/)
+
+валидацию входных данных (это schemas/ + actions/)
+
+UI-логику
+
+Папка actions/
+Для чего нужна
+actions/ — это Server Actions, которые вызываются из UI:
+
+формы
+
+кнопки
+
+клики
+
+события
+
+Actions:
+
+получают данные из формы / пользователя
+
+валидируют их через Zod
+
+вызывают services
+
+возвращают результат в компонент (успех / ошибки)
+
+Это единственный слой, который знает и про UI, и про валидацию, и про бизнес-логику.
+
+Что там должно быть
+ts
+// actions/project.actions.ts
+"use server";
+
+import { createProjectSchema } from "@/schemas/project.schema";
+import { createProject } from "@/services/project.service";
+import { requireAuth } from "@/lib/auth";
+
+export async function createProjectAction(
+  _prevState: any,
+  formData: FormData
+) {
+  const user = await requireAuth();
+
+  const raw = {
+    name: String(formData.get("name") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  };
+
+  const parsed = createProjectSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      success: false,
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const project = await createProject(user.id, parsed.data);
+    return { success: true, project };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Ошибка при создании проекта",
+    };
+  }
+}
+ts
+// actions/profile.actions.ts
+"use server";
+
+import { updateProfileSchema } from "@/schemas/profile.schema";
+import { updateProfile } from "@/services/profile.service";
+import { requireAuth } from "@/lib/auth";
+
+export async function updateProfileAction(
+  _prevState: any,
+  formData: FormData
+) {
+  const user = await requireAuth();
+
+  const raw = {
+    full_name: String(formData.get("full_name") ?? ""),
+    avatar_url: String(formData.get("avatar_url") ?? ""),
+  };
+
+  const parsed = updateProfileSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      success: false,
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const profile = await updateProfile(user.id, parsed.data);
+    return { success: true, profile };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Ошибка при обновлении профиля",
+    };
+  }
+}
+Правила
+Actions — это точка входа из UI.
+Компоненты вызывают createProjectAction, updateProfileAction и т.д.
+
+Валидация всегда в actions.
+Никогда не вызывай services без валидации.
+
+Actions декодируют FormData или JSON, валидируют через Zod, потом вызывают services.
+
+Actions возвращает понятный результат для UI:
+
+{ success: true, data: ... }
+
+{ success: false, errors: {...} }
+
+{ success: false, error: "текст ошибки" }
+
+Не делай actions слишком умными.
+Они должны:
+
+валидировать
+
+вызывать сервис
+
+обрабатывать ошибки
+
+возвращать результат
+
+Вся логика работы с БД — в services.
+
+Папка lib/
+Для чего нужна
+lib/ — это утилиты, хелперы и инфраструктурный код, который помогает всему проекту работать.
+Это не бизнес-логика, а инструменты.
+
+Что там должно быть
+1. Клиенты Supabase
+ts
+// lib/supabase/server.ts
+import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        storage: cookieStore,
+        autoRefreshToken: true,
+        persistSession: true,
+      },
+    }
+  );
+  return supabase;
+}
+ts
+// lib/supabase/client.ts
+"use client";
+
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const browserSupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+2. Auth-хелперы
+ts
+// lib/auth.ts
+import { createServerSupabaseClient } from "./supabase/server";
+
+export async function getUser() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function requireAuth() {
+  const user = await getUser();
+  if (!user) throw new Error("Unauthorized");
+  return user;
+}
+
+export async function getUserProfile() {
+  const user = await getUser();
+  if (!user) return null;
+
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .single();
+
+  return data;
+}
+3. Утилиты
+ts
+// lib/utils.ts
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+export function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+4. Валидационные хелперы
+ts
+// lib/validate.ts
+import { type ZodSchema, type ZodError } from "zod";
+
+export function safeParse<T>(schema: ZodSchema<T>, data: unknown) {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    return {
+      success: false as const,
+      errors: result.error.flatten().fieldErrors,
+    };
+  }
+  return { success: true as const, data: result.data };
+}
+5. Константы
+ts
+// lib/constants.ts
+export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const PAGINATION_LIMIT = 20;
+export const DEFAULT_AVATAR_URL = "/avatars/default.png";
+Правила
+В lib/ не кладут бизнес-логику.
+Если функция делает что-то конкретное для твоего продукта (например, создаёт проект в БД), это services/, а не lib/.
+
+lib/ — это переиспользуемые инструменты.
+Они должны подходить для разных частей проекта, а не только для одной сущности.
+
+Не делай lib/ свалкой.
+ЕслиFunction не переиспользуется хотя бы в 2–3 местах, подумай, действительно ли она в lib/.
+
+Клиенты и auth — в lib/, бизнес-операции — в services/.
+
+Как это работает вместе (пример потока)
+Представь, что пользователь заполняет форму создания проекта.
+
+UI (форма в компоненте) вызывает:
+
+ts
+<form action={createProjectAction}>
+actions/project.actions.ts:
+
+получает FormData
+
+достает name, description
+
+валидирует через createProjectSchema (из schemas/)
+
+если ошибка — возвращает { success: false, errors: ... }
+
+Если валидация прошла:
+
+action вызывает createProject(userId, input) из services/project.service.ts
+
+services/project.service.ts:
+
+использует supabaseAdmin из services/supabase/admin.ts
+
+делает INSERT в таблицу projects
+
+возвращает созданный объект Project
+
+Возврат в UI:
+
+action возвращает { success: true, project }
+
+компонент показывает успех или редирект
+
+Типы:
+
+Project берётся из types/project.ts
+
+CreateProjectInput берётся из schemas/project.schema.ts (z.infer<>)
+
+Auth:
+
+в action сначала вызывается requireAuth() из lib/auth.ts
+
+если пользователь не авторизован — выбрасывается ошибка
+
+Краткие правила по папкам
+types/
+Хранит типы сущностей: User, Project, Profile
+
+Не дублируй типы
+
+Если тип выводится из Zod — можно экспортировать его из schemas/
+
+schemas/
+Хранит Zod-схемы валидации
+
+Одна схема = одна операция: createProjectSchema, loginSchema
+
+Выводи типы через z.infer<>
+
+services/
+Хранит бизнес-логику работы с БД/API
+
+Функции типа createProject, getProfileByUserId
+
+Не знает про UI, формы, действия пользователя
+
+Может кидать ошибки, которые ловит actions
+
+actions/
+Хранит Server Actions
+
+Принимает данные из UI, валидирует через Zod, вызывает services
+
+Возвращает результат для UI: успех / ошибки
+
+Использует requireAuth() из lib/auth.ts
+
+lib/
+Хранит утилиты, хелперы, клиенты
+
+lib/supabase/server.ts, lib/supabase/client.ts
+
+lib/auth.ts — getUser(), requireAuth()
+
+lib/utils.ts — cn(), formatDate(), sleep()
+
+lib/constants.ts — общие константы

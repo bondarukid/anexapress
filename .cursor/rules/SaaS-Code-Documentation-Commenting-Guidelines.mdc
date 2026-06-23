@@ -1,0 +1,217 @@
+---
+alwaysApply: true
+---
+
+📘 SaaS Code Documentation & Commenting Guidelines (Next.js + Zod + Supabase)
+1. Цель документации
+Документация и комментарии должны:
+
+Объяснять зачем, а не только что
+
+Позволять новому разработчику понять систему за 1–2 часа
+
+Уменьшать зависимость от устных объяснений
+
+Повышать качество автодополнения (IDE hints)
+
+Быть частью архитектуры, а не «дополнением»
+
+2. Структура .md файлов в папках
+📁 Обязательное правило
+Каждая важная папка должна содержать README.md (или index.md).
+
+✅ Когда нужен .md файл:
+Папка содержит бизнес-логику
+
+Папка содержит несколько уровней вложенности
+
+Папка не очевидна по названию
+
+Есть архитектурные решения или ограничения
+
+📄 Структура README.md в папке
+Пример: /components/dashboard/README.md
+
+text
+# Dashboard Components
+
+## Назначение
+Компоненты, относящиеся к пользовательской панели (dashboard).
+
+## Структура
+
+- `/account/` — UI и логика управления аккаунтом
+  - `/settings/` — настройки пользователя (email, password, preferences)
+  - `/profile/` — отображение публичной информации пользователя
+
+- `/billing/` — подписки, платежи, тарифы
+
+- `/analytics/` — графики, метрики, usage data
+
+## Принципы
+- Все компоненты должны быть **presentational-first**
+- Логика выносится в hooks (`/hooks`)
+- API вызовы не допускаются напрямую в UI
+
+## Связанные модули
+- `/lib/api/dashboard.ts`
+- `/hooks/dashboard/*`
+3. Правила комментариев в коде
+❗ Главное правило
+Комментарий должен объяснять:
+
+Почему это сделано
+
+Какие есть ограничения
+
+Какие есть побочные эффекты
+
+НЕ писать очевидное.
+
+✅ Формат JSDoc / TSDoc (обязательно)
+Все экспортируемые функции должны иметь комментарии:
+
+ts
+/**
+ * Updates user profile data in Supabase
+ *
+ * @param userId - UUID пользователя
+ * @param data - Объект с обновляемыми полями профиля
+ *
+ * @returns Promise<User>
+ *
+ * @throws Error если обновление не удалось
+ *
+ * @example
+ * await updateUserProfile(user.id, { name: "Ivan" })
+ */
+export async function updateUserProfile(...) {}
+✅ Комментарии для сложной логики
+ts
+// We debounce this request to prevent API spam when user types quickly
+const debouncedSearch = useDebounce(search, 300)
+✅ Комментарии для костылей / ограничений
+ts
+// Supabase returns null instead of empty array in this case
+// We normalize it here to avoid downstream crashes
+✅ TODO / FIXME стандарт
+ts
+// TODO: move this logic to server action (performance issue)
+// FIXME: race condition when multiple updates happen simultaneously
+4. Правила для функций и API
+✅ Названия функций
+Функция должна читаться как действие:
+
+✅ getUserProfile
+
+✅ updateUserSettings
+
+❌ handleData
+
+❌ process
+
+✅ Обязательные описания
+Для каждой функции:
+
+Что делает
+
+Откуда вызывается (если не очевидно)
+
+Есть ли side effects
+
+✅ IDE-friendly typing (очень важно)
+ts
+type UpdateUserProfileInput = {
+  name?: string
+  avatarUrl?: string
+}
+
+/**
+ * Updates user profile in database
+ */
+export async function updateUserProfile(
+  userId: string,
+  input: UpdateUserProfileInput
+): Promise<User> {}
+➡️ Это даёт:
+
+автоподсказки
+
+понятную структуру
+
+контроль типов
+
+5. Документирование Zod схем
+ts
+/**
+ * Schema for validating user profile update form
+ *
+ * Used in:
+ * - Profile settings page
+ * - API route /api/user/update
+ */
+export const updateUserSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+})
+6. Документирование Supabase / API слоев
+Каждый API-файл должен иметь описание:
+
+ts
+/**
+ * User API layer
+ *
+ * Responsible for:
+ * - Fetching user data
+ * - Updating profile
+ * - Handling auth-related queries
+ *
+ * Does NOT:
+ * - Contain UI logic
+ * - Handle form state
+ */
+7. Архитектурные комментарии
+Если есть нестандартное решение — объясняй:
+
+ts
+/**
+ * We use client-side caching here instead of React Query
+ * because:
+ * - lower bundle size
+ * - predictable behavior
+ *
+ * Tradeoff:
+ * - manual cache invalidation required
+ */
+8. Глобальные принципы
+Документация важнее, чем «красивый код без объяснений»
+
+Код должен быть понятен без запуска проекта
+
+Новый разработчик должен понять:
+
+где что лежит
+
+как это связано
+
+куда добавлять новый код
+
+9. Минимальный стандарт (must-have)
+Каждый модуль должен иметь:
+
+README.md (если это папка уровня feature)
+
+JSDoc у экспортируемых функций
+
+Понятные имена
+
+Комментарии у сложной логики
+
+10. Пример "идеального" DX
+Когда разработчик:
+
+Наводит на функцию → видит описание
+
+Открывает папку → понимает структуру
+
+Читает код → не задаёт вопросов "почему так?"

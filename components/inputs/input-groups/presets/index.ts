@@ -1,0 +1,10 @@
+export { aiPresets } from "@/components/inputs/input-groups/presets/ai.presets";
+export { buttonsPresets } from "@/components/inputs/input-groups/presets/buttons.presets";
+export { customPresets } from "@/components/inputs/input-groups/presets/custom.presets";
+export { dropdownPresets } from "@/components/inputs/input-groups/presets/dropdown.presets";
+export { iconsPresets } from "@/components/inputs/input-groups/presets/icons.presets";
+export { labelPresets } from "@/components/inputs/input-groups/presets/label.presets";
+export { spinnerPresets } from "@/components/inputs/input-groups/presets/spinner.presets";
+export { textPresets } from "@/components/inputs/input-groups/presets/text.presets";
+export { textareaPresets } from "@/components/inputs/input-groups/presets/textarea.presets";
+export { tooltipPresets } from "@/components/inputs/input-groups/presets/tooltip.presets";

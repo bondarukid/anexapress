@@ -1,0 +1,78 @@
+---
+title: Roles & permissions
+description: Owner, Admin, and Member roles — plus when to grant custom permissions.
+icon: Shield
+---
+
+<GuideHero badge="Access control">
+  Roles keep your workspace secure while still letting specialists do their job — without giving everyone full admin access.
+</GuideHero>
+
+## Default roles
+
+| Role | Best for | Typical access |
+| ---- | -------- | -------------- |
+| **Owner** | Founder or billing contact | Everything, including ownership transfer and billing |
+| **Admin** | Team lead or ops manager | Members, workspace settings |
+| **Member** | Operators, analysts, reviewers | Day-to-day work within assigned access |
+
+<Callout type="info">
+  There is exactly one **Owner** per workspace at a time. Ownership can be transferred to another active member when needed.
+</Callout>
+
+## Custom permissions
+
+Sometimes a Member needs a narrow extra capability — for example, updating workspace settings without becoming a full Admin. Workspace admins can override permissions per member.
+
+**Good candidates for custom access:**
+
+- A contractor who only reviews submitted records
+- An analyst who exports summaries but should not invite users
+- A regional lead who manages members in one workspace only
+
+**Avoid over-sharing:** start with Member and add permissions only when someone is blocked.
+
+## Ownership transfer
+
+Transfer ownership when the founder leaves, the company restructures, or billing responsibility moves.
+
+<Steps>
+  <Step>
+    ### Confirm the recipient
+
+    The new owner must already be an **active member** of the workspace.
+  </Step>
+  <Step>
+    ### Start transfer from Team settings
+
+    The current owner initiates transfer from **Team**. The recipient must confirm acceptance.
+  </Step>
+  <Step>
+    ### Verify billing
+
+    After transfer, billing emails and plan changes follow the new owner. Review [Billing](/billing) if you are on a paid plan.
+  </Step>
+</Steps>
+
+<Callout type="warn">
+  Ownership transfer cannot be undone automatically. Double-check the recipient before confirming.
+</Callout>
+
+## Related guides
+
+<GuideCards
+  items={[
+    {
+      title: "Invite teammates",
+      description: "Send invites with the right role from day one.",
+      href: "/workspaces/invite-team",
+      icon: "users",
+    },
+    {
+      title: "Profile & security",
+      description: "Manage your personal login and connected accounts.",
+      href: "/account/profile",
+      icon: "book",
+    },
+  ]}
+/>
