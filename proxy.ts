@@ -60,6 +60,24 @@ function isLoginRecoveryScreen(path: string, authReason: string | null) {
   );
 }
 
+/**
+ * Apex → platform uses a 301 for normal page loads only.
+ * POST / RSC / server-action requests must not be redirected — Next.js expects
+ * `text/x-component`, not an HTML redirect body ("unexpected response" on login).
+ */
+function shouldRedirectApexToPlatform(request: NextRequest): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return false;
+  }
+  if (request.headers.has("Next-Action")) {
+    return false;
+  }
+  if (request.headers.get("RSC") === "1") {
+    return false;
+  }
+  return true;
+}
+
 /** Copies refreshed Supabase cookies onto redirects so tokens are not dropped. */
 function redirectPreservingCookies(
   request: NextRequest,
@@ -223,9 +241,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(docsPath, docsBase));
     }
 
-    const platformBase = getPlatformSiteUrl(host);
-    const destination = new URL(`${path}${request.nextUrl.search}`, platformBase);
-    return NextResponse.redirect(destination, 301);
+    if (shouldRedirectApexToPlatform(request)) {
+      const platformBase = getPlatformSiteUrl(host);
+      const destination = new URL(`${path}${request.nextUrl.search}`, platformBase);
+      return NextResponse.redirect(destination, 301);
+    }
   }
 
   const customSiteRewrite = await tryCustomSiteDomainRewrite(request, host, path);

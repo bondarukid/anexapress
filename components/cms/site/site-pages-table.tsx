@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -65,13 +64,7 @@ export function SitePagesTable({ pages, siteId, workspaceId, siteName }: SitePag
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <Link
-          href={workspacePathFromSummary(activeWorkspace, "/sites")}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          ← Sites
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">{siteName} — Pages</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{siteName} — Pages</h1>
       </div>
 
       <form onSubmit={handleCreate} className="border-border max-w-lg space-y-3 rounded-lg border p-4">

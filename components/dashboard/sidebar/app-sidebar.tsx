@@ -3,16 +3,14 @@
 /**
  * Dashboard primary sidebar (`AppSidebar`).
  *
- * **SaaS / tenant screens** (`workspace`) are reachable from sidebar
- * under the collapsible **Workspace settings** root (not linked from the footer profile menu).
- * `DashboardSettingsShell` renders underline tabs inside the SaaS subtree as well.
- *
- * Personal settings stay reachable via **NavUser** (footer) under `/{slug}/dashboard/settings/...`.
+ * Workspace-level navigation: overview, sites list, members, workspace settings.
+ * Site-specific editing lives in `AppSiteSidebar` under `/dashboard/sites/[siteId]/...`.
  */
 
 import * as React from "react";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
+import { Globe, LayoutDashboard, PanelsTopLeft, UsersIcon } from "lucide-react";
 
 import { NavMain } from "@/components/dashboard/sidebar/nav-main";
 import { NavUser } from "@/components/dashboard/sidebar/nav-user";
@@ -25,22 +23,53 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { isSaasSettingsPath, isTeamPath, workspacePath } from "@/lib/routing/workspace-paths";
-import { ENABLE_MULTI_SITE } from "@/lib/config/feature-flags";
-import { FileText, PanelsTopLeft, UsersIcon } from "lucide-react";
+import { useDashboardSites } from "@/components/providers/dashboard-sites-provider";
+import {
+  isDashboardHomePath,
+  isSaasSettingsPath,
+  isSitesListPath,
+  isTeamPath,
+  workspacePathFromSummary,
+} from "@/lib/routing/workspace-paths";
+import { siteDashboardPath as buildSiteDashboardPath } from "@/lib/routing/site-dashboard-paths";
 import { UserProfile } from "@/types/user";
 
-/** Lazily merges demo nav + SaaS accordion open-state derived from pathname */
-function useNavMainBlocks(pathname: string, workspaceSlug: string) {
+/** Lazily merges nav + SaaS accordion open-state derived from pathname */
+function useNavMainBlocks(pathname: string) {
+  const { activeWorkspace } = useWorkspace();
+  const { sites: workspaceSites } = useDashboardSites();
+
+  if (!activeWorkspace) {
+    return [];
+  }
+
   const appRoutesOpen = isSaasSettingsPath(pathname);
   const teamActive = isTeamPath(pathname);
-  const contentActive = pathname.includes("/dashboard/content");
-  const sitesActive = pathname.includes("/dashboard/sites");
-  const mediaActive = pathname.includes("/dashboard/media");
-  const settingsBase = workspacePath(workspaceSlug, "/settings");
-  const teamUrl = workspacePath(workspaceSlug, "/team");
-  const contentUrl = workspacePath(workspaceSlug, "/content");
-  const sitesUrl = workspacePath(workspaceSlug, "/sites");
+  const dashboardActive = isDashboardHomePath(pathname);
+  const sitesListActive = isSitesListPath(pathname);
+  const sitesNavActive = sitesListActive || pathname.includes("/dashboard/sites/");
+  const settingsBase = workspacePathFromSummary(activeWorkspace, "/settings");
+  const teamUrl = workspacePathFromSummary(activeWorkspace, "/team");
+  const dashboardUrl = workspacePathFromSummary(activeWorkspace, "");
+  const sitesUrl = workspacePathFromSummary(activeWorkspace, "/sites");
+
+  const workspacePathInput =
+    activeWorkspace.isChild && activeWorkspace.parentSlug
+      ? { parentSlug: activeWorkspace.parentSlug, childSlug: activeWorkspace.slug }
+      : activeWorkspace.slug;
+
+  const siteItems = useMemo(
+    () => [
+      ...workspaceSites.map((site) => ({
+        title: site.name,
+        url: buildSiteDashboardPath(workspacePathInput, site.id, "/overview"),
+      })),
+      ...(workspaceSites.length > 0
+        ? [{ title: "View all sites", url: sitesUrl }]
+        : [{ title: "Manage sites", url: sitesUrl }]),
+    ],
+    [sitesUrl, workspacePathInput, workspaceSites],
+  );
 
   const appSettingsItems = useMemo(
     () => [{ title: "General", url: `${settingsBase}/workspace` }],
@@ -50,15 +79,17 @@ function useNavMainBlocks(pathname: string, workspaceSlug: string) {
   return useMemo(
     () => [
       {
-        title: "Content",
-        url: contentUrl,
-        icon: <FileText />,
-        isActive: contentActive || sitesActive || mediaActive,
-        items: [
-          { title: ENABLE_MULTI_SITE ? "Sites" : "Site", url: sitesUrl },
-          { title: "Blog posts", url: contentUrl },
-          { title: "Media", url: workspacePath(workspaceSlug, "/media") },
-        ],
+        title: "Dashboard",
+        url: dashboardUrl,
+        icon: <LayoutDashboard />,
+        isActive: dashboardActive,
+      },
+      {
+        title: "Sites",
+        url: sitesUrl,
+        icon: <Globe />,
+        isActive: sitesNavActive,
+        items: siteItems,
       },
       {
         title: "Members",
@@ -74,7 +105,18 @@ function useNavMainBlocks(pathname: string, workspaceSlug: string) {
         items: appSettingsItems,
       },
     ],
-    [appRoutesOpen, appSettingsItems, contentActive, contentUrl, mediaActive, sitesActive, sitesUrl, teamActive, teamUrl],
+    [
+      appRoutesOpen,
+      appSettingsItems,
+      dashboardActive,
+      dashboardUrl,
+      siteItems,
+      sitesNavActive,
+      sitesListActive,
+      sitesUrl,
+      teamActive,
+      teamUrl,
+    ],
   );
 }
 
@@ -85,8 +127,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ user, className, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const { workspaces, activeWorkspace, setActiveWorkspace } = useWorkspace();
-  const workspaceSlug = activeWorkspace?.slug ?? workspaces[0]?.slug ?? "";
-  const navMain = useNavMainBlocks(pathname, workspaceSlug);
+  const navMain = useNavMainBlocks(pathname);
 
   return (
     <Sidebar collapsible="icon" className={className} {...props}>

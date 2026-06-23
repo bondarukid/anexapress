@@ -84,6 +84,20 @@ export function isTeamPath(pathname: string): boolean {
   return parsed.restPath === "/team" || parsed.restPath.startsWith("/team/");
 }
 
+/** True when pathname is the workspace dashboard home (`/dashboard` with no extra segments). */
+export function isDashboardHomePath(pathname: string): boolean {
+  const parsed = parseWorkspaceDashboardPath(pathname);
+  if (!parsed) return false;
+  return parsed.restPath === "" || parsed.restPath === "/";
+}
+
+/** True when pathname is the sites list (`/dashboard/sites`). */
+export function isSitesListPath(pathname: string): boolean {
+  const parsed = parseWorkspaceDashboardPath(pathname);
+  if (!parsed) return false;
+  return parsed.restPath === "/sites" || parsed.restPath === "/sites/";
+}
+
 export function isSaasSettingsPath(pathname: string): boolean {
   const parsed = parseWorkspaceDashboardPath(pathname);
   if (!parsed) return false;

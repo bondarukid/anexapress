@@ -57,16 +57,21 @@ export default function SignInPage({ onSwitchTab, onForgotPassword }: LoginFormP
       dismiss("sign-in-workspace-retry-error");
       setPendingProvider(provider);
       startOAuth(async () => {
-        const result = await signInWithOAuth(provider);
-        if (result.error || !result.url) {
-          setOauthAttemptError(
-            result.error ??
-              `Failed to start ${provider === "google" ? "Google" : "GitHub"} sign-in.`,
-          );
+        try {
+          const result = await signInWithOAuth(provider);
+          if (result.error || !result.url) {
+            setOauthAttemptError(
+              result.error ??
+                `Failed to start ${provider === "google" ? "Google" : "GitHub"} sign-in.`,
+            );
+            setPendingProvider(null);
+            return;
+          }
+          window.location.href = result.url;
+        } catch {
+          setOauthAttemptError("Could not reach the server. Refresh the page and try again.");
           setPendingProvider(null);
-          return;
         }
-        window.location.href = result.url;
       });
     },
     [dismiss, startOAuth],
@@ -100,6 +105,15 @@ export default function SignInPage({ onSwitchTab, onForgotPassword }: LoginFormP
       showError(result.error ?? "Workspace setup failed. Please try again.", {
         id: "sign-in-workspace-retry-error",
         title: "Error",
+        action: {
+          label: "Continue with Google",
+          onClick: () => handleOAuthSignIn("google"),
+        },
+      });
+    } catch {
+      showError("Could not reach the server. Refresh the page and try again.", {
+        id: "sign-in-workspace-retry-error",
+        title: "Connection error",
         action: {
           label: "Continue with Google",
           onClick: () => handleOAuthSignIn("google"),

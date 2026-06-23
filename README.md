@@ -229,10 +229,10 @@ Set variables in `.env.local`:
 | `SUPABASE_URL` | Supabase project URL (Dashboard → Project Settings → API) |
 | `SUPABASE_ANON_KEY` | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key — server-only, never expose to the client |
-| `NEXT_PUBLIC_SITE_URL` | Apex / marketing URL label (e.g. `http://localhost:3000` or `https://anexapress.com`) |
-| `NEXT_PUBLIC_PLATFORM_URL` | Platform SaaS URL (e.g. `http://platform.localhost:3000` or `https://platform.anexapress.com`) |
+| `NEXT_PUBLIC_SITE_URL` | Apex / marketing URL label (e.g. `http://localhost:3000` or `https://your-domain.com`) |
+| `NEXT_PUBLIC_PLATFORM_URL` | Platform SaaS URL (e.g. `http://platform.localhost:3000` or `https://platform.your-domain.com`) |
 | `PLATFORM_HOST` | Platform hostname for proxy routing (e.g. `platform.localhost`) |
-| `APEX_HOST` | Apex hostname that redirects to platform (e.g. `localhost` in dev, `anexapress.com` in prod) |
+| `APEX_HOST` | Apex hostname that redirects to platform (e.g. `localhost` in dev, `your-domain.com` in prod) |
 | `NEXT_PUBLIC_DOCS_URL` | Docs site URL (e.g. `http://docs.localhost:3000`) |
 | `DOCS_HOST` | Docs hostname for proxy (e.g. `docs.localhost`) |
 | `FIREBASE_*` | Firebase web config for analytics/performance (optional) |
@@ -348,19 +348,19 @@ Point all hostnames at the same deployment:
 
 | DNS record | Target |
 |------------|--------|
-| `platform.anexapress.com` | Your hosting (CNAME or A) |
-| `anexapress.com` | Same hosting (apex redirects to platform) |
-| `docs.anexapress.com` | Same hosting (docs subdomain) |
+| `platform.your-domain.com` | Your hosting (CNAME or A) |
+| `your-domain.com` | Same hosting (apex redirects to platform) |
+| `docs.your-domain.com` | Same hosting (docs subdomain) |
 
 Example production env:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://anexapress.com
-NEXT_PUBLIC_PLATFORM_URL=https://platform.anexapress.com
-PLATFORM_HOST=platform.anexapress.com
-APEX_HOST=anexapress.com
-NEXT_PUBLIC_DOCS_URL=https://docs.anexapress.com
-DOCS_HOST=docs.anexapress.com
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+NEXT_PUBLIC_PLATFORM_URL=https://platform.your-domain.com
+PLATFORM_HOST=platform.your-domain.com
+APEX_HOST=your-domain.com
+NEXT_PUBLIC_DOCS_URL=https://docs.your-domain.com
+DOCS_HOST=docs.your-domain.com
 ```
 
 ### Supabase Auth URLs
@@ -369,8 +369,8 @@ In **Supabase Dashboard → Authentication → URL Configuration**:
 
 | Setting | Value |
 |---------|--------|
-| Site URL | `https://platform.anexapress.com` |
-| Redirect URLs | `https://platform.anexapress.com/auth/callback` |
+| Site URL | `https://platform.your-domain.com` |
+| Redirect URLs | `https://platform.your-domain.com/auth/callback` |
 | Redirect URLs (local dev) | `http://platform.localhost:3000/auth/callback` |
 
 Auth cookies are scoped to the platform host; the apex domain only redirects and does not need a session.

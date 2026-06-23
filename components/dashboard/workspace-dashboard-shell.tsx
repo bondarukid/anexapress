@@ -16,6 +16,7 @@ import {
   resolveWorkspacePath,
   resolveDefaultWorkspace,
 } from "@/services/workspace";
+import { listSites } from "@/services/site.service";
 import { DASHBOARD_ENTRY_PATH } from "@/lib/routing/workspace-paths";
 import { ACTIVE_WORKSPACE_SLUG_COOKIE } from "@/types/workspace";
 
@@ -112,9 +113,10 @@ export async function WorkspaceDashboardShell({
   const skipWorkspaceOnboarding = await shouldSkipWorkspaceStep(user.email);
   const showOnboarding = !user.onboardingCompletedAt;
 
-  const [unreadCount, workspaceAccess] = await Promise.all([
+  const [unreadCount, workspaceAccess, sites] = await Promise.all([
     getUnreadNotificationCount(user.id, user.email),
     getWorkspaceAccessPermissions(activeWorkspace.id),
+    listSites(activeWorkspace.id),
   ]);
 
   return (
@@ -123,6 +125,7 @@ export async function WorkspaceDashboardShell({
       workspaces={workspaces}
       activeSlug={activeWorkspace.pathKey ?? activeWorkspace.slug}
       workspaceAccess={workspaceAccess}
+      sites={sites}
       initialUnreadCount={unreadCount}
       showOnboarding={showOnboarding}
       skipWorkspaceOnboarding={skipWorkspaceOnboarding}

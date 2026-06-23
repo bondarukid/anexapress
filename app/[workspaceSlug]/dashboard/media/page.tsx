@@ -1,14 +1,15 @@
-import { MediaLibraryPage } from "@/components/cms/site-dashboard-pages";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Media library",
-};
+import { redirectToDefaultSiteSection } from "@/lib/dashboard/redirect-to-site-section";
+import { getCurrentUser } from "@/services/user";
 
 type PageProps = {
-  params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ site?: string }>;
+  params: Promise<{ workspaceSlug: string; slug?: string }>;
 };
 
-export default function WorkspaceMediaPage(props: PageProps) {
-  return <MediaLibraryPage params={props.params} searchParams={props.searchParams} />;
+export default async function WorkspaceMediaRedirectPage({ params }: PageProps) {
+  const routeParams = await params;
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await redirectToDefaultSiteSection(routeParams, user.id, "/files");
 }

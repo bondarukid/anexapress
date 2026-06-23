@@ -108,26 +108,31 @@ export async function signUp(_prev: AuthActionState, formData: FormData): Promis
 
 /** Password login; Supabase persists session cookies via `@supabase/ssr` integration in `createClient`. */
 export async function signIn(_prev: AuthActionState, formData: FormData): Promise<AuthActionState> {
-  const parsed = SignInCredentialsSchema.safeParse({
-    email: String(formData.get("email") ?? ""),
-    password: String(formData.get("password") ?? ""),
-  });
+  try {
+    const parsed = SignInCredentialsSchema.safeParse({
+      email: String(formData.get("email") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    revalidatePath(dashboardPath);
+
+    const nextPath = resolveSafeNextPath(String(formData.get("next") ?? ""), dashboardPath);
+    return { redirectTo: nextPath };
+  } catch (error) {
+    console.error("[signIn] unexpected error", error);
+    return { error: "Could not reach the server. Refresh the page and try again." };
   }
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(dashboardPath);
-
-  const nextPath = resolveSafeNextPath(String(formData.get("next") ?? ""), dashboardPath);
-  return { redirectTo: nextPath };
 }
 
 /**

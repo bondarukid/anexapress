@@ -10,16 +10,18 @@ export const metadata = {
 };
 
 type PageProps = {
-  params: Promise<{ workspaceSlug: string; postId: string }>;
+  params: Promise<{ workspaceSlug: string; slug?: string; postId: string }>;
 };
 
 export default async function PostEditorPage({ params }: PageProps) {
-  const { workspaceSlug, postId } = await params;
+  const routeParams = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const workspace = await resolveWorkspaceFromRoute({ workspaceSlug }, user.id);
+  const workspace = await resolveWorkspaceFromRoute(routeParams, user.id);
   if (!workspace) notFound();
+
+  const { postId } = routeParams;
 
   const [editorData, versions] = await Promise.all([
     getPostEditorData(workspace.id, postId, user.id),

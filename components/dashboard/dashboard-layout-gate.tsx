@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { DashboardProviders } from "@/components/dashboard/dashboard-providers";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { SiteSummary } from "@/types/site";
 import type { WorkspaceAccessPermissions } from "@/types/team";
 import type { WorkspaceSummary } from "@/types/workspace";
 import type { UserProfile } from "@/types/user";
@@ -17,6 +18,7 @@ type DashboardLayoutGateProps = {
   skipWorkspaceOnboarding?: boolean;
   configureWorkspace?: WorkspaceSummary | null;
   workspaceAccess?: WorkspaceAccessPermissions;
+  sites?: SiteSummary[];
   children: ReactNode;
 };
 
@@ -32,12 +34,14 @@ export function DashboardLayoutGate({
   skipWorkspaceOnboarding,
   configureWorkspace,
   workspaceAccess,
+  sites = [],
   children,
 }: DashboardLayoutGateProps) {
   return (
     <DashboardProviders
       user={user}
       workspaces={workspaces}
+      sites={sites}
       activeSlug={activeSlug}
       initialUnreadCount={initialUnreadCount}
       showOnboarding={showOnboarding}

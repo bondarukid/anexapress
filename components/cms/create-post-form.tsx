@@ -25,9 +25,15 @@ type CreatePostFormProps = {
   workspace: WorkspaceSummary;
   siteId: string;
   sites: SiteSummary[];
+  siteDashboardBase?: string;
 };
 
-export function CreatePostForm({ workspace, siteId: initialSiteId, sites }: CreatePostFormProps) {
+export function CreatePostForm({
+  workspace,
+  siteId: initialSiteId,
+  sites,
+  siteDashboardBase,
+}: CreatePostFormProps) {
   const router = useRouter();
   const [siteId, setSiteId] = useState(initialSiteId);
   const [title, setTitle] = useState("");
@@ -58,8 +64,12 @@ export function CreatePostForm({ workspace, siteId: initialSiteId, sites }: Crea
       }
 
       toast.success("Post created");
-      openPostEditor(workspace, result.data.postId);
-      router.push(workspacePathFromSummary(workspace, `/content?site=${siteId}`));
+      openPostEditor(workspace, result.data.postId, { siteDashboardBase });
+      router.push(
+        siteDashboardBase
+          ? `${siteDashboardBase}/content`
+          : workspacePathFromSummary(workspace, `/content?site=${siteId}`),
+      );
     });
   };
 

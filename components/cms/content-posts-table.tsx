@@ -7,6 +7,7 @@ import { FileText, Plus } from "lucide-react";
 
 import { openPostEditor } from "@/lib/cms/open-post-editor";
 import { canCreateContent } from "@/lib/team/permissions";
+import { useOptionalSiteDashboard } from "@/components/providers/site-dashboard-provider";
 import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ type ContentPostsTableProps = {
   posts: PostSummary[];
   sites: SiteSummary[];
   selectedSiteId: string | null;
+  lockSiteFilter?: boolean;
 };
 
 const statusVariant: Record<PostSummary["status"], "default" | "secondary" | "outline"> = {
@@ -42,8 +44,14 @@ const statusVariant: Record<PostSummary["status"], "default" | "secondary" | "ou
   archived: "outline",
 };
 
-export function ContentPostsTable({ posts, sites, selectedSiteId }: ContentPostsTableProps) {
+export function ContentPostsTable({
+  posts,
+  sites,
+  selectedSiteId,
+  lockSiteFilter = false,
+}: ContentPostsTableProps) {
   const { activeWorkspace, workspaceAccess } = useWorkspace();
+  const siteDashboard = useOptionalSiteDashboard();
   const canCreate = canCreateContent(workspaceAccess);
   const router = useRouter();
 
@@ -52,9 +60,13 @@ export function ContentPostsTable({ posts, sites, selectedSiteId }: ContentPosts
   }
 
   const siteQuery = selectedSiteId ? `?site=${selectedSiteId}` : "";
-  const newPostHref = workspacePathFromSummary(activeWorkspace, `/content/new${siteQuery}`);
+  const newPostHref =
+    lockSiteFilter && siteDashboard
+      ? `${siteDashboard.siteDashboardBase}/content/new`
+      : workspacePathFromSummary(activeWorkspace, `/content/new${siteQuery}`);
 
   const handleSiteChange = (siteId: string) => {
+    if (lockSiteFilter) return;
     router.push(workspacePathFromSummary(activeWorkspace, `/content?site=${siteId}`));
   };
 
@@ -66,7 +78,7 @@ export function ContentPostsTable({ posts, sites, selectedSiteId }: ContentPosts
           <p className="text-muted-foreground text-sm">Manage posts for a workspace site.</p>
         </div>
         <div className="flex items-end gap-3">
-          {sites.length > 1 ? (
+          {!lockSiteFilter && sites.length > 1 ? (
             <div className="space-y-1">
               <Label className="text-xs">Site</Label>
               <Select value={selectedSiteId ?? undefined} onValueChange={handleSiteChange}>
@@ -131,7 +143,12 @@ export function ContentPostsTable({ posts, sites, selectedSiteId }: ContentPosts
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => openPostEditor(activeWorkspace, post.id)}
+                    onClick={() =>
+                      openPostEditor(activeWorkspace, post.id, {
+                        siteDashboardBase:
+                          lockSiteFilter ? siteDashboard?.siteDashboardBase : undefined,
+                      })
+                    }
                   >
                     Edit
                   </Button>

@@ -4,8 +4,15 @@ import type { WorkspaceSummary } from "@/types/workspace";
 /**
  * Opens the fullscreen post editor in a new browser window.
  */
-export function openPostEditor(workspace: WorkspaceSummary, postId: string): void {
-  const url = workspacePathFromSummary(workspace, `/content/editor/${postId}`);
+export function openPostEditor(
+  workspace: WorkspaceSummary,
+  postId: string,
+  options?: { siteDashboardBase?: string },
+): void {
+  const url =
+    options?.siteDashboardBase
+      ? `${options.siteDashboardBase}/content/editor/${postId}`
+      : workspacePathFromSummary(workspace, `/content/editor/${postId}`);
   const popup = window.open(
     url,
     `post-editor-${postId}`,

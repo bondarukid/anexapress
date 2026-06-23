@@ -2,26 +2,42 @@
 
 /**
  * Stick header used inside `SidebarInset` (dashboard shell).
- * Title distinguishes SaaS subtree (`workspace`) from personal settings pages.
  */
 
 import { usePathname, useRouter } from "next/navigation";
+import { LanguagesIcon } from "lucide-react";
 
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import LanguageDropdown from "@/components/dashboard/dropdown-language";
 import { NotificationButton } from "@/components/dashboard/notification-button";
 import { useNotificationsContext } from "@/components/providers/notifications-provider";
+import { useResolvedSiteDashboard } from "@/components/providers/site-dashboard-provider";
 import { useWorkspace } from "@/components/providers/workspace-provider";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
+  isSiteDashboardPath,
+  parseSiteDashboardPath,
+  siteDashboardSectionTitle,
+} from "@/lib/routing/site-dashboard-paths";
+import {
+  isDashboardHomePath,
+  isSitesListPath,
+  isTeamPath,
   settingsLeafFromPathname,
   workspacePath,
 } from "@/lib/routing/workspace-paths";
-import { LanguagesIcon } from "lucide-react";
 
-/** SaaS routes — aligns with sidebar “Workspace settings”. */
-function headingForPathname(pathname: string): string {
+function headingForPathname(pathname: string, siteName?: string): string {
+  if (isSiteDashboardPath(pathname)) {
+    const parsed = parseSiteDashboardPath(pathname);
+    const section = parsed ? siteDashboardSectionTitle(parsed.section) : "Site";
+    return siteName ? `${siteName} · ${section}` : section;
+  }
+
+  if (isDashboardHomePath(pathname)) return "Dashboard";
+  if (isSitesListPath(pathname)) return "Sites";
+
   const leaf = settingsLeafFromPathname(pathname);
   if (leaf === "workspace") return "Workspace settings";
 
@@ -32,6 +48,8 @@ function headingForPathname(pathname: string): string {
   if (pathname.includes("/dashboard/mail")) {
     return "Notifications";
   }
+
+  if (isTeamPath(pathname)) return "Members";
 
   return "Dashboard";
 }
@@ -44,8 +62,10 @@ export function SiteHeader({ title: titleOverride }: SiteHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { activeWorkspace, workspaces } = useWorkspace();
+  const siteDashboard = useResolvedSiteDashboard();
   const { unreadCount } = useNotificationsContext();
-  const title = titleOverride ?? headingForPathname(pathname);
+  const title =
+    titleOverride ?? headingForPathname(pathname, siteDashboard?.activeSite.name);
 
   function handleNotificationsClick() {
     const slug = activeWorkspace?.slug ?? workspaces[0]?.slug;

@@ -4,18 +4,32 @@ import type { NextConfig } from "next";
 
 const withMDX = createMDX();
 
-function supabaseStorageRemotePattern(): { protocol: "https"; hostname: string } | null {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  if (!supabaseUrl) return null;
+function supabaseStorageRemotePatterns(): Array<{
+  protocol: "http" | "https";
+  hostname: string;
+}> {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return [];
 
   try {
-    return { protocol: "https", hostname: new URL(supabaseUrl).hostname };
+    const url = new URL(supabaseUrl);
+    const hostname = url.hostname;
+    const primaryProtocol = url.protocol === "http:" ? "http" : "https";
+    const patterns: Array<{ protocol: "http" | "https"; hostname: string }> = [
+      { protocol: primaryProtocol, hostname },
+    ];
+
+    // Allow both protocols for self-hosted Supabase (local http, prod https).
+    const alternateProtocol = primaryProtocol === "http" ? "https" : "http";
+    patterns.push({ protocol: alternateProtocol, hostname });
+
+    return patterns;
   } catch {
-    return null;
+    return [];
   }
 }
 
-const supabaseStoragePattern = supabaseStorageRemotePattern();
+const supabaseStoragePatterns = supabaseStorageRemotePatterns();
 
 const nextConfig: NextConfig = {
   env: {
@@ -44,7 +58,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "flagcdn.com" },
       { protocol: "https", hostname: "cdn.shadcnstudio.com" },
       { protocol: "https", hostname: "*.supabase.co" },
-      ...(supabaseStoragePattern ? [supabaseStoragePattern] : []),
+      ...supabaseStoragePatterns,
       { protocol: "https", hostname: "*.mzstatic.com" },
     ],
   },

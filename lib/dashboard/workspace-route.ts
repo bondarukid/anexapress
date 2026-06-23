@@ -5,6 +5,9 @@ export { workspacePathFromSummary };
 
 type WorkspaceRouteParams = {
   workspaceSlug: string;
+  /** Second URL segment under child workspace dashboard routes (`/[workspaceSlug]/[slug]/dashboard`). */
+  slug?: string;
+  /** @deprecated Use `slug` — kept for callers outside App Router params. */
   childSlug?: string;
 };
 
@@ -15,7 +18,7 @@ export async function resolveWorkspaceFromRoute(
 ) {
   return resolveWorkspacePath({
     parentSlug: params.workspaceSlug,
-    childSlug: params.childSlug,
+    childSlug: params.slug ?? params.childSlug,
     userId,
   });
 }
