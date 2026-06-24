@@ -55,6 +55,17 @@ export function isWorkspaceEditorPath(pathname: string | null | undefined): bool
   return ROOT_EDITOR_RE.test(path) || CHILD_EDITOR_RE.test(path);
 }
 
+/** Alias for editor route detection in dashboard shell. */
+export const isEditorPath = isWorkspaceEditorPath;
+
+/** Fallback header title for editor routes without chrome context. */
+export function editorTitleFromPath(pathname: string | null | undefined): string {
+  const rest = tenantEditorRestSuffix(pathname);
+  if (rest.includes("/page/")) return "Edit page";
+  if (rest.includes("/post/")) return "Edit post";
+  return "Editor";
+}
+
 /** Parse `/{slug}/editor/...` or `/{parent}/{child}/editor/...`. */
 export function parseWorkspaceEditorPath(
   pathname: string | null | undefined,

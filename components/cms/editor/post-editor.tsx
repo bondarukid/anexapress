@@ -24,6 +24,7 @@ import {
   useEditor,
 } from "novel";
 
+import { BlockOutlinePortal } from "@/components/cms/editor/block-outline-portal";
 import { CmsImageResizer } from "@/components/cms/editor/cms-image-resizer";
 import {
   buildEditorExtensions,
@@ -163,6 +164,7 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(function
         }}
       >
         <EditorBridge editorRef={ref} />
+        <BlockOutlinePortal />
 
         <EditorCommand className="border-border bg-background z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border px-1 py-2 shadow-md">
           <EditorCommandEmpty className="text-muted-foreground px-2">No results</EditorCommandEmpty>

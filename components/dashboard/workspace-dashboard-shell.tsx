@@ -23,6 +23,7 @@ import { ACTIVE_WORKSPACE_SLUG_COOKIE } from "@/types/workspace";
 type WorkspaceDashboardShellProps = {
   parentSlug: string;
   childSlug?: string | null;
+  showOnboarding?: boolean;
   children: ReactNode;
 };
 
@@ -36,6 +37,7 @@ function failWorkspaceLoad(): never {
 export async function WorkspaceDashboardShell({
   parentSlug,
   childSlug,
+  showOnboarding: showOnboardingOverride,
   children,
 }: WorkspaceDashboardShellProps) {
   const user = await getCurrentUser();
@@ -111,7 +113,8 @@ export async function WorkspaceDashboardShell({
   const cookieSlug = cookieStore.get(ACTIVE_WORKSPACE_SLUG_COOKIE)?.value;
   const defaultWorkspace = resolveDefaultWorkspace(workspaces, cookieSlug);
   const skipWorkspaceOnboarding = await shouldSkipWorkspaceStep(user.email);
-  const showOnboarding = !user.onboardingCompletedAt;
+  const showOnboarding =
+    showOnboardingOverride ?? !user.onboardingCompletedAt;
 
   const [unreadCount, workspaceAccess, sites] = await Promise.all([
     getUnreadNotificationCount(user.id, user.email),

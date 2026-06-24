@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
@@ -9,7 +9,8 @@ import {
   revertSitePageVersionAction,
   saveSitePageDraftAction,
 } from "@/actions/site/site.actions";
-import { BlockEditorChrome } from "@/components/cms/editor/block-editor-shell";
+import { BlockEditorWorkspace } from "@/components/cms/editor/block-editor-shell";
+import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import {
   BlockEditorSidebar,
   type EditorSidebarTab,
@@ -55,6 +56,7 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
   const [isPublishing, startPublish] = useTransition();
 
   const editorRef = useRef<PostEditorHandle>(null);
+  const { setChrome } = useEditorChrome();
   const isDirtyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,7 +122,7 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
     [markDirty],
   );
 
-  const handlePublish = () => {
+  const handlePublish = useCallback(() => {
     startPublish(async () => {
       await saveSitePageDraftAction({
         pageId: page.id,
@@ -144,9 +146,9 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
 
       toast.success("Page published");
     });
-  };
+  }, [content, page.id, seo, site.id, startPublish, title, workspaceId]);
 
-  const handleSnapshot = async () => {
+  const handleSnapshot = useCallback(async () => {
     const result = await createSitePageSnapshotAction({
       pageId: page.id,
       siteId: site.id,
@@ -170,7 +172,7 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
       },
       ...prev,
     ]);
-  };
+  }, [page.id, site.id, title, workspaceId]);
 
   const handleRevert = async (versionId: string) => {
     const result = await revertSitePageVersionAction({
@@ -206,7 +208,7 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
     setSidebarTab("media");
   }, []);
 
-  const closeHref = (() => {
+  const closeHref = useMemo(() => {
     if (siteDashboard?.siteDashboardBase != null) {
       return `${siteDashboard.siteDashboardBase}/pages`;
     }
@@ -214,19 +216,40 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
       return "/";
     }
     return workspacePathFromSummary(activeWorkspace, `/sites/${site.id}/pages`);
-  })();
+  }, [activeWorkspace, site.id, siteDashboard?.siteDashboardBase]);
+
+  useEffect(() => {
+    setChrome({
+      title: `${site.name} · ${title.trim() || "Untitled page"}`,
+      status: page.status,
+      savedAt,
+      isSaving,
+      isPublishing,
+      canPublish: canPublish && page.type !== "blog_index",
+      closeHref,
+      closeLabel: "Back to pages",
+      onSaveVersion: () => {
+        void handleSnapshot();
+      },
+      onPublish: handlePublish,
+    });
+  }, [
+    canPublish,
+    closeHref,
+    handlePublish,
+    handleSnapshot,
+    isPublishing,
+    isSaving,
+    page.status,
+    page.type,
+    savedAt,
+    setChrome,
+    site.name,
+    title,
+  ]);
 
   return (
-    <BlockEditorChrome
-      title={`${site.name} · ${title.trim() || "Untitled page"}`}
-      status={page.status}
-      savedAt={savedAt}
-      isSaving={isSaving}
-      isPublishing={isPublishing}
-      canPublish={canPublish && page.type !== "blog_index"}
-      onSaveVersion={() => void handleSnapshot()}
-      onPublish={handlePublish}
-      closeHref={closeHref}
+    <BlockEditorWorkspace
       editor={
         <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
           <input

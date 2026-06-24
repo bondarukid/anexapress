@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
@@ -10,7 +10,8 @@ import {
   saveDraftAction,
 } from "@/actions/post/post.actions";
 import { PostEditor, type PostEditorHandle } from "@/components/cms/editor/post-editor";
-import { BlockEditorChrome } from "@/components/cms/editor/block-editor-shell";
+import { BlockEditorWorkspace } from "@/components/cms/editor/block-editor-shell";
+import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import {
   BlockEditorSidebar,
   type EditorSidebarTab,
@@ -56,6 +57,7 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
   const [isPublishing, startPublish] = useTransition();
 
   const editorRef = useRef<PostEditorHandle>(null);
+  const { setChrome } = useEditorChrome();
   const isDirtyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,7 +122,7 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
     [markDirty],
   );
 
-  const handlePublish = () => {
+  const handlePublish = useCallback(() => {
     startPublish(async () => {
       await saveDraftAction({
         postId: post.id,
@@ -142,9 +144,9 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
 
       toast.success("Post published");
     });
-  };
+  }, [content, post.id, post.workspaceId, seo, startPublish, title]);
 
-  const handleSnapshot = async () => {
+  const handleSnapshot = useCallback(async () => {
     const result = await createSnapshotAction({
       postId: post.id,
       workspaceId: post.workspaceId,
@@ -167,7 +169,7 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
       },
       ...prev,
     ]);
-  };
+  }, [post.id, post.workspaceId, title]);
 
   const handleRevert = async (versionId: string) => {
     const result = await revertVersionAction({
@@ -202,7 +204,7 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
     setSidebarTab("media");
   }, []);
 
-  const closeHref = (() => {
+  const closeHref = useMemo(() => {
     if (siteDashboard?.siteDashboardBase != null) {
       return `${siteDashboard.siteDashboardBase}/content`;
     }
@@ -212,19 +214,38 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
     return post.siteId
       ? workspacePathFromSummary(activeWorkspace, `/content?site=${post.siteId}`)
       : workspacePathFromSummary(activeWorkspace, "/content");
-  })();
+  }, [activeWorkspace, post.siteId, siteDashboard?.siteDashboardBase]);
+
+  useEffect(() => {
+    setChrome({
+      title: title.trim() || "Untitled post",
+      status: post.status,
+      savedAt,
+      isSaving,
+      isPublishing,
+      canPublish,
+      closeHref,
+      closeLabel: "Back to posts",
+      onSaveVersion: () => {
+        void handleSnapshot();
+      },
+      onPublish: handlePublish,
+    });
+  }, [
+    canPublish,
+    closeHref,
+    handlePublish,
+    handleSnapshot,
+    isPublishing,
+    isSaving,
+    post.status,
+    savedAt,
+    setChrome,
+    title,
+  ]);
 
   return (
-    <BlockEditorChrome
-      title={title.trim() || "Untitled post"}
-      status={post.status}
-      savedAt={savedAt}
-      isSaving={isSaving}
-      isPublishing={isPublishing}
-      canPublish={canPublish}
-      onSaveVersion={() => void handleSnapshot()}
-      onPublish={handlePublish}
-      closeHref={closeHref}
+    <BlockEditorWorkspace
       editor={
         <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
           <input

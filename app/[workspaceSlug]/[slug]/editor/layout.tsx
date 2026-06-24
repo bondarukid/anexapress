@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { EditorWorkspaceLayout } from "@/components/cms/editor/editor-workspace-layout";
+import { WorkspaceDashboardShell } from "@/components/dashboard/workspace-dashboard-shell";
 
 type LayoutProps = {
   children: ReactNode;
@@ -10,8 +10,8 @@ type LayoutProps = {
 export default async function ChildWorkspaceEditorLayout({ children, params }: LayoutProps) {
   const { workspaceSlug, slug } = await params;
   return (
-    <EditorWorkspaceLayout parentSlug={workspaceSlug} childSlug={slug}>
+    <WorkspaceDashboardShell parentSlug={workspaceSlug} childSlug={slug} showOnboarding={false}>
       {children}
-    </EditorWorkspaceLayout>
+    </WorkspaceDashboardShell>
   );
 }
