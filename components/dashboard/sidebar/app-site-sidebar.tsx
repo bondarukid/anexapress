@@ -108,9 +108,9 @@ export function AppSiteSidebar({ user, className, ...props }: AppSiteSidebarProp
             <Collapsible asChild defaultOpen={filesActive} className="group/collapsible">
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip="Файловый менеджер">
+                  <SidebarMenuButton tooltip="File manager">
                     <FolderOpen className="size-4" />
-                    <span>Файловый менеджер</span>
+                    <span>File manager</span>
                     <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
@@ -119,7 +119,7 @@ export function AppSiteSidebar({ user, className, ...props }: AppSiteSidebarProp
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild isActive={filesActive}>
                         <Link href={filesHref}>
-                          <span>Файлы</span>
+                          <span>Files</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

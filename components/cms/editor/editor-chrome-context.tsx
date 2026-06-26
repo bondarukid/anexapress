@@ -48,6 +48,9 @@ const DEFAULT_CHROME: EditorChromeState = {
 type EditorChromeContextValue = {
   chrome: EditorChromeState;
   setChrome: (patch: Partial<EditorChromeState>) => void;
+  inspectorOpen: boolean;
+  setInspectorOpen: (open: boolean) => void;
+  toggleInspector: () => void;
 };
 
 const EditorChromeContext = createContext<EditorChromeContextValue | null>(null);
@@ -71,6 +74,7 @@ function chromeDataEqual(left: EditorChromeData, right: EditorChromeData): boole
  */
 export function EditorChromeProvider({ children }: { children: ReactNode }) {
   const [chromeData, setChromeData] = useState<EditorChromeData>(DEFAULT_CHROME_DATA);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
 
   const actionsRef = useRef<EditorChromeActions>({
     onSaveVersion: () => undefined,
@@ -125,12 +129,19 @@ export function EditorChromeProvider({ children }: { children: ReactNode }) {
     [chromeData, stableActions],
   );
 
+  const toggleInspector = useCallback(() => {
+    setInspectorOpen((current) => !current);
+  }, []);
+
   const value = useMemo(
     () => ({
       chrome,
       setChrome,
+      inspectorOpen,
+      setInspectorOpen,
+      toggleInspector,
     }),
-    [chrome, setChrome],
+    [chrome, inspectorOpen, setChrome, toggleInspector],
   );
 
   return <EditorChromeContext.Provider value={value}>{children}</EditorChromeContext.Provider>;
@@ -142,6 +153,9 @@ export function useEditorChrome(): EditorChromeContextValue {
     return {
       chrome: DEFAULT_CHROME,
       setChrome: () => undefined,
+      inspectorOpen: true,
+      setInspectorOpen: () => undefined,
+      toggleInspector: () => undefined,
     };
   }
   return context;

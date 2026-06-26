@@ -41,10 +41,13 @@ export function EditorBlockSidebar({ className, ...props }: EditorBlockSidebarPr
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent className="min-h-0 flex-1">
+        <SidebarGroup className="flex min-h-0 flex-1 flex-col">
           <SidebarGroupLabel>Blocks</SidebarGroupLabel>
-          <div id={EDITOR_BLOCK_OUTLINE_ROOT_ID} className="min-h-0 flex-1 px-2" />
+          <div
+            id={EDITOR_BLOCK_OUTLINE_ROOT_ID}
+            className="min-h-0 flex-1 overflow-y-auto px-2"
+          />
         </SidebarGroup>
       </SidebarContent>
 

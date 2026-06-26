@@ -37,8 +37,14 @@ import { createElement } from "react";
 
 import type { Editor } from "@tiptap/core";
 
+import TextAlign from "@tiptap/extension-text-align";
+
 import { BlockMoveAnimation } from "@/components/cms/editor/extensions/block-move-animation";
 import { CmsDragHandle } from "@/components/cms/editor/extensions/cms-drag-handle";
+import {
+  CmsHeadingBlock,
+  CmsParagraphBlock,
+} from "@/components/cms/editor/extensions/cms-paragraph-block";
 import { TrailingParagraph } from "@/components/cms/editor/extensions/trailing-paragraph";
 import { insertAtomBlockWithTrailingParagraph } from "@/lib/cms/editor-insert-helpers";
 
@@ -204,6 +210,15 @@ export function buildEditorExtensions(options: EditorExtensionOptions = {}) {
       orderedList: { HTMLAttributes: { class: "list-decimal ml-4" } },
       codeBlock: false,
       horizontalRule: false,
+      paragraph: false,
+      heading: false,
+    }),
+    CmsParagraphBlock,
+    CmsHeadingBlock,
+    TextAlign.configure({
+      types: ["paragraph", "heading"],
+      alignments: ["left", "center", "right", "justify"],
+      defaultAlignment: "left",
     }),
     Placeholder.configure({
       placeholder: ({ node }) => {

@@ -12,6 +12,7 @@ import { useResolvedSiteDashboard } from "@/components/providers/site-dashboard-
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { isEditorPath } from "@/lib/routing/editor-paths";
 import { isSiteDashboardPath } from "@/lib/routing/site-dashboard-paths";
+import { cn } from "@/lib/utils";
 import type { UserProfile } from "@/types/user";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -34,6 +35,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
   return (
     <EditorChromeProvider>
       <SidebarProvider
+        className={cn(isEditor && "h-svh max-h-svh overflow-hidden")}
         style={
           {
             "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -48,7 +50,12 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
         ) : (
           <AppSidebar variant="inset" user={user} />
         )}
-        <SidebarInset className="min-h-svh">
+        <SidebarInset
+          className={cn(
+            "min-h-svh",
+            isEditor && "flex h-svh max-h-svh flex-col overflow-hidden",
+          )}
+        >
           {isEditor ? <EditorSiteHeader /> : <SiteHeader />}
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         </SidebarInset>

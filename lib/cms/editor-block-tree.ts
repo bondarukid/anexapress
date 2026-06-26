@@ -12,7 +12,10 @@ export type EditorBlockTreeItem = {
 
 const ATOM_BLOCK_TYPES = new Set(["image", "youtube", "horizontalRule"]);
 
-function getNodeLabel(node: ProseMirrorNode): string {
+/** Blocks whose children are inline text only — not shown as nested outline rows. */
+const INLINE_CONTENT_BLOCK_TYPES = new Set(["heading", "paragraph", "codeBlock"]);
+
+export function getEditorBlockLabel(node: ProseMirrorNode): string {
   switch (node.type.name) {
     case "heading":
       return `Heading ${String(node.attrs.level ?? "")}`.trim();
@@ -68,6 +71,10 @@ function walkNode(
   parent: ProseMirrorNode | null,
   indexInParent: number,
 ): EditorBlockTreeItem | null {
+  if (node.isText) {
+    return null;
+  }
+
   if (shouldSkipEmptyParagraph(node, parent, indexInParent)) {
     return null;
   }
@@ -77,12 +84,12 @@ function walkNode(
     pos,
     nodeSize: node.nodeSize,
     type: node.type.name,
-    label: getNodeLabel(node),
+    label: getEditorBlockLabel(node),
     depth,
     children: [],
   };
 
-  if (node.childCount === 0) {
+  if (node.childCount === 0 || INLINE_CONTENT_BLOCK_TYPES.has(node.type.name)) {
     return item;
   }
 
@@ -129,8 +136,23 @@ export function getTopLevelEditorBlocks(doc: ProseMirrorNode): EditorBlockTreeIt
  * Finds the active top-level block position for the current selection anchor.
  */
 export function getActiveTopLevelBlockPos(doc: ProseMirrorNode, anchor: number): number | null {
+  if (doc.childCount === 0) return null;
+
   const resolved = doc.resolve(anchor);
-  const depth = resolved.depth >= 1 ? 1 : 0;
-  if (resolved.depth < depth) return null;
-  return resolved.before(depth);
+
+  // NodeSelection on the first top-level block uses anchor 0, which resolves at doc depth.
+  // `before(0)` is invalid — use the gap position instead.
+  if (resolved.depth === 0) {
+    if (resolved.pos >= doc.content.size) {
+      let pos = 0;
+      for (let index = 0; index < doc.childCount - 1; index += 1) {
+        pos += doc.child(index).nodeSize;
+      }
+      return pos;
+    }
+
+    return resolved.pos;
+  }
+
+  return resolved.before(1);
 }

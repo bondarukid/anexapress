@@ -11,11 +11,12 @@ import {
 } from "@/actions/post/post.actions";
 import { PostEditor, type PostEditorHandle } from "@/components/cms/editor/post-editor";
 import { BlockEditorWorkspace } from "@/components/cms/editor/block-editor-shell";
-import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import {
   BlockEditorSidebar,
   type EditorSidebarTab,
 } from "@/components/cms/editor/block-editor-sidebar";
+import { EditorDocumentTitleField } from "@/components/cms/editor/editor-document-title-field";
+import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import { MediaPanel } from "@/components/cms/editor/media-panel";
 import { SeoPanel } from "@/components/cms/editor/seo-panel";
 import { VersionsPanel } from "@/components/cms/editor/versions-panel";
@@ -40,7 +41,7 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
   const { activeWorkspace } = useWorkspace();
   const siteDashboard = useOptionalSiteDashboard();
   const [title, setTitle] = useState(post.title);
-  const [slug, setSlug] = useState(post.slug);
+  const [slug] = useState(post.slug);
   const [content, setContent] = useState<TiptapContent>(draftVersion.content);
   const [seo, setSeo] = useState<SeoFieldsInput>({
     seoTitle: post.seoTitle,
@@ -246,28 +247,8 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
 
   return (
     <BlockEditorWorkspace
-      editor={
-        <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Post title"
-            className="placeholder:text-muted-foreground/60 w-full border-0 bg-transparent text-3xl font-bold tracking-tight outline-none sm:text-4xl"
-          />
-          <PostEditor
-            key={editorKey}
-            ref={editorRef}
-            initialContent={content}
-            onChange={handleContentChange}
-            workspaceId={post.workspaceId}
-            siteId={post.siteId}
-            onImageRequest={handleImageRequest}
-            className="mt-6"
-          />
-        </div>
-      }
-      sidebar={
+      documentLabel="Post"
+      documentSettings={
         <BlockEditorSidebar
           activeTab={sidebarTab}
           onTabChange={setSidebarTab}
@@ -288,6 +269,25 @@ export function PostEditorShell({ data, versions: initialVersions }: PostEditorS
           }
           versionsTab={<VersionsPanel versions={versions} onRevert={handleRevert} />}
         />
+      }
+      editor={
+        <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
+          <EditorDocumentTitleField
+            value={title}
+            onChange={handleTitleChange}
+            placeholder="Post title"
+          />
+          <PostEditor
+            key={editorKey}
+            ref={editorRef}
+            initialContent={content}
+            onChange={handleContentChange}
+            workspaceId={post.workspaceId}
+            siteId={post.siteId}
+            onImageRequest={handleImageRequest}
+            className="mt-6"
+          />
+        </div>
       }
     />
   );

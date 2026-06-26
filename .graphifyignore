@@ -1,0 +1,16 @@
+# .graphifyignore
+
+node_modules/
+dist/
+*.generated.py
+
+# only index src/, ignore everything else
+*
+!actions/
+!app/
+!components/
+!hooks/
+!lib/
+!schemas/
+!services/
+!types/

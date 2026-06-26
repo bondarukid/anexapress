@@ -8,7 +8,13 @@ import Youtube from "@tiptap/extension-youtube";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
+import TextAlign from "@tiptap/extension-text-align";
 import { common, createLowlight } from "lowlight";
+
+import {
+  CmsHeadingBlock,
+  CmsParagraphBlock,
+} from "@/components/cms/editor/extensions/cms-paragraph-block";
 
 const lowlight = createLowlight(common);
 
@@ -45,6 +51,15 @@ export const cmsRenderExtensions = [
     horizontalRule: false,
     link: false,
     underline: false,
+    paragraph: false,
+    heading: false,
+  }),
+  CmsParagraphBlock,
+  CmsHeadingBlock,
+  TextAlign.configure({
+    types: ["paragraph", "heading"],
+    alignments: ["left", "center", "right", "justify"],
+    defaultAlignment: "left",
   }),
   renderImage,
   Link.configure({ openOnClick: true }),

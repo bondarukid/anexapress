@@ -2682,6 +2682,42 @@
         <option name="homepage" value="https://uiable.com" />
         <option name="urlTemplate" value="https://uiable.com/r/{name}.json" />
       </RegistryConfigState>
+      <RegistryConfigState>
+        <option name="id" value="central-hirael" />
+        <option name="name" value="Hirael" />
+        <option name="namespace" value="@hirael" />
+        <option name="baseUrl" value="https://hirael.com/r" />
+        <option name="stylePath" value="/{name}.json" />
+        <option name="type" value="community" />
+        <option name="enabled" value="false" />
+        <option name="description" value="The components shadcn/ui doesn't ship. A collection of high-utility React components built on top of shadcn/ui." />
+        <option name="homepage" value="https://hirael.com" />
+        <option name="urlTemplate" value="https://hirael.com/r/{name}.json" />
+      </RegistryConfigState>
+      <RegistryConfigState>
+        <option name="id" value="central-paceui" />
+        <option name="name" value="Paceui" />
+        <option name="namespace" value="@paceui" />
+        <option name="baseUrl" value="https://paceui.com/r" />
+        <option name="stylePath" value="/{name}.json" />
+        <option name="type" value="community" />
+        <option name="enabled" value="false" />
+        <option name="description" value="Carefully built UI blocks for real apps and dashboards, designed to integrate smoothly from early ideas to production releases." />
+        <option name="homepage" value="https://paceui.com" />
+        <option name="urlTemplate" value="https://paceui.com/r/{name}.json" />
+      </RegistryConfigState>
+      <RegistryConfigState>
+        <option name="id" value="central-payload-components" />
+        <option name="name" value="Payload-components" />
+        <option name="namespace" value="@payload-components" />
+        <option name="baseUrl" value="https://www.payload-components.xyz/r" />
+        <option name="stylePath" value="/{name}.json" />
+        <option name="type" value="community" />
+        <option name="enabled" value="false" />
+        <option name="description" value="MIT registry of typed Payload CMS blocks for Payload v3 + Next.js. Each block installs as reviewable source; the companion CLI also wires collection config, RenderBlocks, types, and the admin import map." />
+        <option name="homepage" value="https://www.payload-components.xyz" />
+        <option name="urlTemplate" value="https://www.payload-components.xyz/r/{name}.json" />
+      </RegistryConfigState>
     </registryConfigs>
   </component>
 </project>

@@ -1,35 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Check, Cloud, LanguagesIcon, Loader2, Save, Upload } from "lucide-react";
 
+import { InspectorSidebarTrigger } from "@/components/cms/editor/editor-inspector-sidebar";
 import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import LanguageDropdown from "@/components/dashboard/dropdown-language";
-import { NotificationButton } from "@/components/dashboard/notification-button";
-import { useNotificationsContext } from "@/components/providers/notifications-provider";
-import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { workspacePath } from "@/lib/routing/workspace-paths";
 
 /**
  * Dashboard-style header for CMS editor routes with save/publish actions.
  */
 export function EditorSiteHeader() {
-  const router = useRouter();
   const { chrome } = useEditorChrome();
-  const { activeWorkspace, workspaces } = useWorkspace();
-  const { unreadCount } = useNotificationsContext();
 
   const statusLabel = chrome.status === "published" ? "Published" : "Draft";
-
-  function handleNotificationsClick() {
-    const slug = activeWorkspace?.slug ?? workspaces[0]?.slug;
-    if (!slug) return;
-    router.push(workspacePath(slug, "/mail"));
-  }
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -102,10 +89,9 @@ export function EditorSiteHeader() {
             }
           />
 
-          <NotificationButton
-            hasNotifications={unreadCount > 0}
-            onClick={handleNotificationsClick}
-          />
+          <Separator orientation="vertical" className="mx-1 hidden h-4 sm:block" />
+
+          <InspectorSidebarTrigger className="-mr-1" />
         </div>
       </div>
     </header>

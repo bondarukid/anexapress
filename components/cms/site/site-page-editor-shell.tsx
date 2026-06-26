@@ -10,11 +10,12 @@ import {
   saveSitePageDraftAction,
 } from "@/actions/site/site.actions";
 import { BlockEditorWorkspace } from "@/components/cms/editor/block-editor-shell";
-import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import {
   BlockEditorSidebar,
   type EditorSidebarTab,
 } from "@/components/cms/editor/block-editor-sidebar";
+import { EditorDocumentTitleField } from "@/components/cms/editor/editor-document-title-field";
+import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import { PostEditor, type PostEditorHandle } from "@/components/cms/editor/post-editor";
 import { MediaPanel } from "@/components/cms/editor/media-panel";
 import { SeoPanel } from "@/components/cms/editor/seo-panel";
@@ -250,28 +251,8 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
 
   return (
     <BlockEditorWorkspace
-      editor={
-        <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Page title"
-            className="placeholder:text-muted-foreground/60 w-full border-0 bg-transparent text-3xl font-bold tracking-tight outline-none sm:text-4xl"
-          />
-          <PostEditor
-            key={editorKey}
-            ref={editorRef}
-            initialContent={content}
-            onChange={handleContentChange}
-            workspaceId={workspaceId}
-            siteId={site.id}
-            onImageRequest={handleImageRequest}
-            className="mt-6"
-          />
-        </div>
-      }
-      sidebar={
+      documentLabel="Page"
+      documentSettings={
         <BlockEditorSidebar
           activeTab={sidebarTab}
           onTabChange={setSidebarTab}
@@ -291,18 +272,37 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
           mediaTab={<MediaPanel workspaceId={workspaceId} siteId={site.id} onInsertImage={handleInsertImage} />}
           versionsTab={
             <VersionsPanel
-              versions={versions.map((v) => ({
-                id: v.id,
-                postId: v.pageId,
-                version: v.version,
-                kind: v.kind,
-                createdAt: v.createdAt,
-                title: v.title,
+              versions={versions.map((version) => ({
+                id: version.id,
+                postId: version.pageId,
+                version: version.version,
+                kind: version.kind,
+                createdAt: version.createdAt,
+                title: version.title,
               }))}
               onRevert={handleRevert}
             />
           }
         />
+      }
+      editor={
+        <div className="mx-auto w-full max-w-3xl px-6 py-10 sm:px-10">
+          <EditorDocumentTitleField
+            value={title}
+            onChange={handleTitleChange}
+            placeholder="Page title"
+          />
+          <PostEditor
+            key={editorKey}
+            ref={editorRef}
+            initialContent={content}
+            onChange={handleContentChange}
+            workspaceId={workspaceId}
+            siteId={site.id}
+            onImageRequest={handleImageRequest}
+            className="mt-6"
+          />
+        </div>
       }
     />
   );
