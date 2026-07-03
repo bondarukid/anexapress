@@ -11,7 +11,7 @@
 !.yarn/versions
 
 /graphify-out
-
+/.idea
 # testing
 /coverage
 

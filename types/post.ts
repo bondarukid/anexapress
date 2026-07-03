@@ -47,6 +47,19 @@ export type PostSummary = Pick<
   siteId?: string | null;
 };
 
+/** Dashboard posts table row — includes cover preview like the public blog cards. */
+export type PostDashboardListItem = PostSummary & {
+  coverImageUrl: string | null;
+};
+
+export type PaginatedResult<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 /** Published post row for public blog index cards. */
 export type BlogPostListItem = PostSummary & {
   summary: string | null;

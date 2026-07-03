@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { BlogIndexHeader } from "@/components/cms/blog-index-header";
 import { BlogPostCard } from "@/components/cms/public/blog-post-card";
 import { cn } from "@/lib/utils";
 import type { BlogPostListItem } from "@/types/post";
@@ -26,21 +26,7 @@ export function BlogIndexView({
   return (
     <section className={cn("pt-8 pb-12 md:pt-10 md:pb-16 lg:pb-20", className)}>
       <div className="container mx-auto flex flex-col items-center gap-8 px-6">
-        <div className="text-center">
-          {tagline ? (
-            <Badge variant="secondary" className="mb-4">
-              {tagline}
-            </Badge>
-          ) : null}
-          <h1 className="mb-3 text-4xl tracking-tighter text-pretty md:mb-4 lg:max-w-3xl lg:text-5xl">
-            {heading}
-          </h1>
-          {description ? (
-            <p className="text-muted-foreground mb-8 md:text-base lg:max-w-2xl lg:text-lg">
-              {description}
-            </p>
-          ) : null}
-        </div>
+        <BlogIndexHeader heading={heading} tagline={tagline} description={description} />
 
         {posts.length > 0 ? (
           <div className="grid w-full gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">

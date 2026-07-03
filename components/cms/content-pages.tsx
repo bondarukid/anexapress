@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { PostEditorShell } from "@/components/cms/editor/post-editor-shell";
 import { ContentPostsTable } from "@/components/cms/content-posts-table";
 import { formatUserDisplayName } from "@/lib/cms/post-author";
+import { parsePageParam } from "@/lib/cms/parse-page-param";
 import { resolveWorkspaceFromRoute } from "@/lib/dashboard/workspace-route";
-import { getPostEditorData, listPostVersions, listPosts } from "@/services/post.service";
+import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
+import { getPostEditorData, listPostVersions, listPostsPaginated } from "@/services/post.service";
 import { listSites } from "@/services/site.service";
 import { getCurrentUser } from "@/services/user";
 
@@ -16,6 +18,7 @@ type ContentPageParams = {
 
 type ContentSearchParams = {
   site?: string;
+  page?: string;
 };
 
 export async function ContentListPage({
@@ -36,16 +39,26 @@ export async function ContentListPage({
   const search = searchParams ? await searchParams : {};
   const defaultSite = sites.find((s) => s.isDefault) ?? sites[0];
   const selectedSiteId = resolved.siteId ?? search.site ?? defaultSite?.id;
-  const posts = selectedSiteId
-    ? await listPosts(workspace.id, selectedSiteId)
-    : await listPosts(workspace.id);
+  const page = parsePageParam(search.page);
+  const lockSiteFilter = Boolean(resolved.siteId);
+
+  const pagination = await listPostsPaginated(workspace.id, {
+    siteId: selectedSiteId,
+    page,
+  });
+
+  const contentBasePath = lockSiteFilter
+    ? workspacePathFromSummary(workspace, `/sites/${resolved.siteId}/content`)
+    : workspacePathFromSummary(workspace, "/content");
 
   return (
     <ContentPostsTable
-      posts={posts}
+      posts={pagination.items}
+      pagination={pagination}
       sites={sites}
       selectedSiteId={selectedSiteId ?? null}
-      lockSiteFilter={Boolean(resolved.siteId)}
+      lockSiteFilter={lockSiteFilter}
+      contentBasePath={contentBasePath}
     />
   );
 }

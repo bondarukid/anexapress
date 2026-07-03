@@ -1,16 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { FileText, Plus } from "lucide-react";
+import { FileText, ImageIcon, Plus } from "lucide-react";
 
-import { openPostEditor } from "@/lib/cms/open-post-editor";
-import { canCreateContent } from "@/lib/team/permissions";
-import { useOptionalSiteDashboard } from "@/components/providers/site-dashboard-provider";
-import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
-import { Badge } from "@/components/ui/badge";
+import { ContentPostsPagination } from "@/components/cms/content-posts-pagination";
 import { CreatePostDialog } from "@/components/cms/create-post-dialog";
+import { useOptionalSiteDashboard } from "@/components/providers/site-dashboard-provider";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,24 +28,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import type { PostSummary } from "@/types/post";
+import { getPostStatusLabel, POST_STATUS_META } from "@/lib/cms/post-status";
+import { openPostEditor } from "@/lib/cms/open-post-editor";
+import { canCreateContent } from "@/lib/team/permissions";
+import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
+import type { PaginatedResult, PostDashboardListItem } from "@/types/post";
 import type { SiteSummary } from "@/types/site";
 
 type ContentPostsTableProps = {
-  posts: PostSummary[];
+  posts: PostDashboardListItem[];
+  pagination: PaginatedResult<PostDashboardListItem>;
   sites: SiteSummary[];
   selectedSiteId: string | null;
   lockSiteFilter?: boolean;
+  contentBasePath: string;
 };
-
-import { getPostStatusLabel, POST_STATUS_META } from "@/lib/cms/post-status";
 
 export function ContentPostsTable({
   posts,
+  pagination,
   sites,
   selectedSiteId,
   lockSiteFilter = false,
+  contentBasePath,
 }: ContentPostsTableProps) {
   const { activeWorkspace, workspaceAccess } = useWorkspace();
   const siteDashboard = useOptionalSiteDashboard();
@@ -119,47 +124,83 @@ export function ContentPostsTable({
           ) : null}
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {posts.map((post) => (
-              <TableRow key={post.id}>
-                <TableCell className="font-medium">{post.title}</TableCell>
-                <TableCell className="text-muted-foreground">{post.slug}</TableCell>
-                <TableCell>
-                  <Badge variant={POST_STATUS_META[post.status].badgeVariant}>
-                    {getPostStatusLabel(post.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {formatDistanceToNow(new Date(post.updatedAt), { addSuffix: true })}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      openPostEditor(activeWorkspace, post.id, {
-                        siteId: lockSiteFilter ? siteDashboard?.activeSite.id : post.siteId,
-                      })
-                    }
-                  >
-                    Edit
-                  </Button>
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-center">#</TableHead>
+                <TableHead className="w-[120px]">Cover</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {posts.map((post, index) => {
+                const rowNumber = (pagination.page - 1) * pagination.pageSize + index + 1;
+
+                return (
+                <TableRow key={post.id}>
+                  <TableCell className="text-muted-foreground text-center text-sm tabular-nums">
+                    {rowNumber}
+                  </TableCell>
+                  <TableCell>
+                    <div className="bg-muted relative aspect-video w-24 overflow-hidden rounded-md">
+                      {post.coverImageUrl ? (
+                        <Image
+                          src={post.coverImageUrl}
+                          alt={post.title}
+                          fill
+                          className="object-cover object-center"
+                          sizes="96px"
+                        />
+                      ) : (
+                        <div className="text-muted-foreground flex h-full w-full items-center justify-center">
+                          <ImageIcon className="size-5 opacity-40" aria-hidden />
+                          <span className="sr-only">No cover image for {post.title}</span>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{post.title}</TableCell>
+                  <TableCell className="text-muted-foreground">{post.slug}</TableCell>
+                  <TableCell>
+                    <Badge variant={POST_STATUS_META[post.status].badgeVariant}>
+                      {getPostStatusLabel(post.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDistanceToNow(new Date(post.updatedAt), { addSuffix: true })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openPostEditor(activeWorkspace, post.id, {
+                          siteId: lockSiteFilter ? siteDashboard?.activeSite.id : post.siteId,
+                        })
+                      }
+                    >
+                      Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+
+          <ContentPostsPagination
+            pagination={pagination}
+            contentBasePath={contentBasePath}
+            selectedSiteId={selectedSiteId}
+            lockSiteFilter={lockSiteFilter}
+          />
+        </>
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+import { clampPage } from "@/lib/cms/parse-page-param";
+import { POSTS_TABLE_PAGE_SIZE } from "@/lib/constants";
 import { createClient } from "@/lib/server";
 import { syncPostBlocks } from "@/lib/cms/sync-post-blocks";
 import { parseSeoSnapshot } from "@/lib/cms/parse-seo-snapshot";
@@ -25,7 +27,9 @@ import { resolvePostCoverImageUrl } from "@/lib/cms/post-cover-image";
 import type { CreatePostInput, SaveDraftInput } from "@/schemas/post.schema";
 import type {
   BlogPostListItem,
+  PaginatedResult,
   PostActionResult,
+  PostDashboardListItem,
   PostEditorData,
   PostStatus,
   PostSummary,
@@ -166,6 +170,123 @@ export async function listPosts(
     createdAt: row.created_at,
     siteId: row.site_id,
   }));
+}
+
+type ListPostsPaginatedOptions = {
+  siteId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+type PostVersionContentRow = {
+  content: unknown;
+};
+
+type PostPaginatedRow = {
+  id: string;
+  slug: string;
+  title: string;
+  status: string;
+  published_at: string | null;
+  updated_at: string;
+  created_at: string;
+  site_id: string | null;
+  published_version: PostVersionContentRow | PostVersionContentRow[] | null;
+  current_draft: PostVersionContentRow | PostVersionContentRow[] | null;
+};
+
+function resolveDashboardPostCoverImageUrl(row: PostPaginatedRow): string | null {
+  const publishedVersion = Array.isArray(row.published_version)
+    ? row.published_version[0]
+    : row.published_version;
+  const draftVersion = Array.isArray(row.current_draft)
+    ? row.current_draft[0]
+    : row.current_draft;
+
+  const contentForCover =
+    row.status === "published" && publishedVersion?.content
+      ? publishedVersion.content
+      : (draftVersion?.content ?? publishedVersion?.content);
+
+  return resolvePostCoverImageUrl({ content: contentForCover });
+}
+
+/**
+ * Lists posts for the dashboard table with server-side pagination.
+ */
+export async function listPostsPaginated(
+  workspaceId: string,
+  options: ListPostsPaginatedOptions = {},
+): Promise<PaginatedResult<PostDashboardListItem>> {
+  const pageSize = options.pageSize ?? POSTS_TABLE_PAGE_SIZE;
+  const requestedPage = options.page ?? 1;
+  const supabase = await createClient();
+
+  let countQuery = supabase
+    .from("posts")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
+
+  if (options.siteId) {
+    countQuery = countQuery.eq("site_id", options.siteId);
+  }
+
+  const { count, error: countError } = await countQuery;
+  if (countError) {
+    throw new Error(countError.message);
+  }
+
+  const total = count ?? 0;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+  const page = clampPage(requestedPage, totalPages === 0 ? 1 : totalPages);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let dataQuery = supabase
+    .from("posts")
+    .select(
+      `
+      id,
+      slug,
+      title,
+      status,
+      published_at,
+      updated_at,
+      created_at,
+      site_id,
+      published_version:post_versions!posts_published_version_id_fkey (content),
+      current_draft:post_versions!posts_current_draft_version_id_fkey (content)
+    `,
+    )
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false });
+
+  if (options.siteId) {
+    dataQuery = dataQuery.eq("site_id", options.siteId);
+  }
+
+  const { data, error } = await dataQuery.range(from, to);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    items: ((data ?? []) as PostPaginatedRow[]).map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      status: row.status as PostDashboardListItem["status"],
+      publishedAt: row.published_at,
+      updatedAt: row.updated_at,
+      createdAt: row.created_at,
+      siteId: row.site_id,
+      coverImageUrl: resolveDashboardPostCoverImageUrl(row),
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
 }
 
 /**
