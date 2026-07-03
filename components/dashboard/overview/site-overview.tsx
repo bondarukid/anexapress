@@ -9,6 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 
+import { NewPostButton } from "@/components/cms/create-post-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildSiteBasePath } from "@/lib/cms/site-paths";
@@ -139,9 +140,21 @@ export async function SiteOverview({ workspace, site, workspaceAccess }: SiteOve
               <h2 className="text-lg font-medium">Recent posts</h2>
             </div>
             {canCreate ? (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`${siteBase}/content/new`}>New post</Link>
-              </Button>
+              <NewPostButton
+                variant="outline"
+                size="sm"
+                workspace={workspace}
+                siteId={site.id}
+                sites={[
+                  {
+                    id: site.id,
+                    name: site.name,
+                    slug: site.slug,
+                    isDefault: site.isDefault,
+                    updatedAt: site.updatedAt,
+                  },
+                ]}
+              />
             ) : null}
           </div>
           {posts.length === 0 ? (

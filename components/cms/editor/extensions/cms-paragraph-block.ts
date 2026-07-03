@@ -1,6 +1,7 @@
 import Paragraph from "@tiptap/extension-paragraph";
 import Heading from "@tiptap/extension-heading";
-import type { Attribute } from "@tiptap/core";
+import { Extension, type Attribute } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 
 import {
   CMS_BLOCK_BACKGROUNDS,
@@ -10,6 +11,7 @@ import {
   CMS_BLOCK_WIDTHS,
   CMS_COLOR_THEMES,
 } from "@/lib/cms/editor-block-attributes";
+import { resolveBlockTitle } from "@/lib/cms/editor-block-title";
 
 function buildClassList(attrs: Record<string, string | null | undefined>): string[] {
   const classes: string[] = [];
@@ -105,6 +107,7 @@ function mergeBlockHtmlAttributes(attributes: Record<string, unknown>): Record<s
     ["blockIndent", "data-block-indent"],
     ["colorTheme", "data-color-theme"],
     ["blockBackground", "data-block-background"],
+    ["blockTitle", "data-block-title"],
   ];
 
   dataMappings.forEach(([key, dataAttr]) => {
@@ -117,6 +120,74 @@ function mergeBlockHtmlAttributes(attributes: Record<string, unknown>): Record<s
   return htmlAttrs;
 }
 
+const blockTitleAttribute: Attribute = {
+  default: null,
+  parseHTML: (element) => element.getAttribute("data-block-title"),
+  renderHTML: (attributes) => {
+    const title = attributes.blockTitle;
+    if (typeof title !== "string" || title.length === 0) {
+      return {};
+    }
+
+    return { "data-block-title": title };
+  },
+};
+
+function createBlockTitleAttribute(): Record<string, Attribute> {
+  return { blockTitle: blockTitleAttribute };
+}
+
+const blockTitleSyncKey = new PluginKey("cmsBlockTitleSync");
+
+/**
+ * Keeps `blockTitle` in sync with block type (heading level, paragraph variant).
+ */
+export const CmsBlockTitleSync = Extension.create({
+  name: "cmsBlockTitleSync",
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: blockTitleSyncKey,
+        appendTransaction(transactions, _oldState, newState) {
+          if (!transactions.some((transaction) => transaction.docChanged)) {
+            return null;
+          }
+
+          const updates: Array<{ pos: number; attrs: Record<string, unknown> }> = [];
+
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name !== "paragraph" && node.type.name !== "heading") {
+              return;
+            }
+
+            const expectedTitle = resolveBlockTitle(node.type.name, node.attrs);
+            if (node.attrs.blockTitle === expectedTitle) {
+              return;
+            }
+
+            updates.push({
+              pos,
+              attrs: { ...node.attrs, blockTitle: expectedTitle },
+            });
+          });
+
+          if (updates.length === 0) {
+            return null;
+          }
+
+          let tr = newState.tr;
+          for (const update of updates.sort((left, right) => right.pos - left.pos)) {
+            tr = tr.setNodeMarkup(update.pos, undefined, update.attrs);
+          }
+
+          return tr;
+        },
+      }),
+    ];
+  },
+});
+
 /**
  * Paragraph with CMS block-level layout and variant attributes.
  */
@@ -124,6 +195,7 @@ export const CmsParagraphBlock = Paragraph.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      ...createBlockTitleAttribute(),
       blockVariant: createDataAttribute(
         CMS_BLOCK_VARIANTS,
         "paragraph",
@@ -164,6 +236,7 @@ export const CmsHeadingBlock = Heading.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      ...createBlockTitleAttribute(),
       ...createLayoutAttributes(),
     };
   },

@@ -1,4 +1,4 @@
-import { ContentListPage, ContentNewPage } from "@/components/cms/content-pages";
+import { ContentListPage } from "@/components/cms/content-pages";
 
 export const metadata = {
   title: "Blog posts",

@@ -1,14 +1,27 @@
-import { ContentNewPage } from "@/components/cms/content-pages";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "New post",
-};
+import { redirectToDefaultSiteSection } from "@/lib/dashboard/redirect-to-site-section";
+import { siteDashboardPath } from "@/lib/routing/site-dashboard-paths";
+import { resolveWorkspaceFromRoute } from "@/lib/dashboard/workspace-route";
+import { getCurrentUser } from "@/services/user";
 
 type PageProps = {
   params: Promise<{ workspaceSlug: string; siteId: string; slug?: string }>;
-  searchParams: Promise<{ site?: string }>;
 };
 
-export default function SiteContentNewPage(props: PageProps) {
-  return <ContentNewPage params={props.params} searchParams={props.searchParams} />;
+/** Legacy route — new posts open from a dialog on the content list. */
+export default async function SiteContentNewRedirectPage({ params }: PageProps) {
+  const routeParams = await params;
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const workspace = await resolveWorkspaceFromRoute(routeParams, user.id);
+  if (!workspace) redirect("/login");
+
+  const pathInput =
+    workspace.isChild && workspace.parentSlug
+      ? { parentSlug: workspace.parentSlug, childSlug: workspace.slug }
+      : workspace.slug;
+
+  redirect(siteDashboardPath(pathInput, routeParams.siteId, "/content"));
 }

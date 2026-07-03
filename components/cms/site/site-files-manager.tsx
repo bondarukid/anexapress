@@ -55,11 +55,18 @@ export function SiteFilesManager({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const uploadPath =
+      publicPath === "/google0000000000000000.html" && file.name.toLowerCase().startsWith("google")
+        ? `/${file.name}`
+      : publicPath === "/BingSiteAuth.xml" && file.name.toLowerCase().includes("bingsiteauth")
+        ? `/${file.name}`
+      : publicPath;
+
     startTransition(async () => {
       const formData = new FormData();
       formData.set("workspaceId", workspaceId);
       formData.set("siteId", siteId);
-      formData.set("publicPath", publicPath);
+      formData.set("publicPath", uploadPath);
       formData.set("file", file);
 
       const result = await uploadSiteFileAction(formData);
@@ -110,6 +117,7 @@ export function SiteFilesManager({
         <h1 className="text-2xl font-semibold">{siteName} — Site files</h1>
         <p className="text-muted-foreground text-sm">
           Files are served from the site root{publicBase ? ` on ${publicBase}` : ""}.
+          Upload Google verification HTML or BingSiteAuth.xml for search engine HTML-file verification.
         </p>
       </div>
 
@@ -133,6 +141,24 @@ export function SiteFilesManager({
         >
           <Plus className="mr-1 size-4" />
           robots.txt preset
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPublicPath("/google0000000000000000.html")}
+        >
+          <Plus className="mr-1 size-4" />
+          Google verification HTML
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPublicPath("/BingSiteAuth.xml")}
+        >
+          <Plus className="mr-1 size-4" />
+          Bing verification file
         </Button>
       </div>
 
@@ -160,11 +186,16 @@ export function SiteFilesManager({
             <FileText className="mr-2 size-4" />
             Create text file
           </Button>
-          <Button type="button" variant="outline" asChild disabled={isPending}>
+              <Button type="button" variant="outline" asChild disabled={isPending}>
             <label>
               <Upload className="mr-2 inline size-4" />
               Upload file
-              <input type="file" className="hidden" onChange={handleUpload} />
+              <input
+                type="file"
+                className="hidden"
+                accept=".html,.xml,.txt,text/html,text/xml,text/plain"
+                onChange={handleUpload}
+              />
             </label>
           </Button>
         </div>

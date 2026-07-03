@@ -1,19 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import { createSitePageAction } from "@/actions/site/site.actions";
+import { CreateSitePageDialog } from "@/components/cms/site/create-site-page-dialog";
 import { openSitePageEditor } from "@/lib/cms/open-site-page-editor";
-import { slugifyTitle } from "@/lib/cms/post-mappers";
-import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -33,70 +27,30 @@ type SitePagesTableProps = {
 
 export function SitePagesTable({ pages, siteId, workspaceId, siteName }: SitePagesTableProps) {
   const { activeWorkspace } = useWorkspace();
-  const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   if (!activeWorkspace) return null;
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    startTransition(async () => {
-      const result = await createSitePageAction({
-        siteId,
-        workspaceId,
-        title,
-        slug,
-        type: "page",
-      });
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Page created");
-      openSitePageEditor(activeWorkspace, siteId, result.data.pageId);
-      router.refresh();
-    });
-  };
-
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{siteName} — Pages</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{siteName} — Pages</h1>
+          <p className="text-muted-foreground text-sm">Manage pages for this site.</p>
+        </div>
+        <Button type="button" onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="mr-2 size-4" />
+          New page
+        </Button>
       </div>
 
-      <form onSubmit={handleCreate} className="border-border max-w-lg space-y-3 rounded-lg border p-4">
-        <div className="space-y-2">
-          <Label htmlFor="page-title">New page title</Label>
-          <Input
-            id="page-title"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (!slugTouched) setSlug(slugifyTitle(e.target.value));
-            }}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="page-slug">Slug</Label>
-          <Input
-            id="page-slug"
-            value={slug}
-            onChange={(e) => {
-              setSlugTouched(true);
-              setSlug(e.target.value);
-            }}
-            required
-          />
-        </div>
-        <Button type="submit" disabled={isPending}>
-          <Plus className="mr-2 size-4" />
-          Create page
-        </Button>
-      </form>
+      <CreateSitePageDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        siteId={siteId}
+        workspaceId={workspaceId}
+        workspace={activeWorkspace}
+      />
 
       <Table>
         <TableHeader>

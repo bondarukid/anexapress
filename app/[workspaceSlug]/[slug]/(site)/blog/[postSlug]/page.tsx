@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { format } from "date-fns";
 import { notFound } from "next/navigation";
 
 import { BlockContentRenderer } from "@/components/cms/renderer/block-content-renderer";
+import { PostPublicHeader } from "@/components/cms/public/post-public-header";
 import { buildSiteCanonicalUrl } from "@/lib/cms/site-canonical";
+import { resolveSeoMetaDescription, resolveSeoTitle } from "@/lib/cms/post-mappers";
 import { getSiteBySlug } from "@/lib/cms/resolve-site";
 import { getPublishedPostForSite } from "@/services/post.service";
 
@@ -26,13 +27,19 @@ export async function generateMetadata({ params }: SiteBlogPostProps): Promise<M
     path: `/blog/${postSlug}`,
   });
 
+  const seoMetaDescription = resolveSeoMetaDescription(post.description, {
+    seoDescription: post.seoDescription,
+    usePostDescriptionForSeo: post.usePostDescriptionForSeo,
+  });
+  const seoOgTitle = resolveSeoTitle(post.title, { seoTitle: post.seoTitle });
+
   return {
-    title: post.seoTitle ?? post.title,
-    description: post.seoDescription ?? undefined,
+    title: seoOgTitle,
+    description: seoMetaDescription ?? undefined,
     alternates: { canonical: post.seoCanonical ?? url },
     openGraph: {
-      title: post.seoTitle ?? post.title,
-      description: post.seoDescription ?? undefined,
+      title: seoOgTitle,
+      description: seoMetaDescription ?? undefined,
       url,
       type: "article",
       publishedTime: post.publishedAt ?? undefined,
@@ -55,7 +62,10 @@ export default async function SiteBlogPostPage({ params }: SiteBlogPostProps) {
     headline: post.title,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
-    description: post.seoDescription,
+    description: resolveSeoMetaDescription(post.description, {
+      seoDescription: post.seoDescription,
+      usePostDescriptionForSeo: post.usePostDescriptionForSeo,
+    }),
     image: post.ogImageUrl,
   };
 
@@ -66,14 +76,13 @@ export default async function SiteBlogPostPage({ params }: SiteBlogPostProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <article>
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">{post.title}</h1>
-          {post.publishedAt ? (
-            <time className="text-muted-foreground mt-3 block text-sm">
-              {format(new Date(post.publishedAt), "MMMM d, yyyy")}
-            </time>
-          ) : null}
-        </header>
+        <PostPublicHeader
+          title={post.title}
+          description={post.description}
+          authorName={post.authorName}
+          authorAvatarUrl={post.authorAvatarUrl}
+          publishedAt={post.publishedAt}
+        />
         <BlockContentRenderer content={post.content} />
       </article>
     </div>

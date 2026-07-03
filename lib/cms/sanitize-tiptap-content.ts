@@ -1,3 +1,4 @@
+import { resolveBlockTitle } from "@/lib/cms/editor-block-title";
 import { EMPTY_TIPTAP_DOC, type TiptapContent, type TiptapNode } from "@/types/tiptap";
 
 function isNonEmptyString(value: unknown): value is string {
@@ -24,6 +25,11 @@ function cleanNode(node: TiptapNode): TiptapNode | null {
     .filter((child): child is TiptapNode => child !== null);
 
   const cleanedMarks = node.marks?.filter((mark) => {
+    if (mark.type === "textStyle") return false;
+    if (mark.type === "highlight") {
+      const color = mark.attrs?.color;
+      return typeof color === "string" && color.startsWith("var(--novel-highlight-");
+    }
     if (mark.type !== "link") return true;
     return isNonEmptyString(mark.attrs?.href);
   });
@@ -33,6 +39,14 @@ function cleanNode(node: TiptapNode): TiptapNode | null {
     ...(cleanedContent ? { content: cleanedContent } : {}),
     ...(cleanedMarks ? { marks: cleanedMarks } : {}),
   };
+
+  if (nextNode.type === "paragraph" || nextNode.type === "heading") {
+    const attrs = { ...(nextNode.attrs ?? {}) };
+    if (typeof attrs.blockTitle !== "string" || attrs.blockTitle.trim().length === 0) {
+      attrs.blockTitle = resolveBlockTitle(nextNode.type, attrs);
+    }
+    nextNode.attrs = attrs;
+  }
 
   if (
     nextNode.type === "paragraph" &&

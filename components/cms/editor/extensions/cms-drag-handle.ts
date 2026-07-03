@@ -15,6 +15,8 @@ type DragHandlePluginOptions = {
   customNodes: string[];
 };
 
+const HANDLE_OFFSET_PX = 4;
+
 function getPmView(): typeof pmView | null {
   try {
     return pmView;
@@ -45,29 +47,9 @@ function serializeForClipboard(
   throw new Error("No supported clipboard serialization method found.");
 }
 
-function absoluteRect(node: Element): { top: number; left: number; width: number } {
-  const data = node.getBoundingClientRect();
-  const modal = node.closest('[role="dialog"]');
-  if (modal && window.getComputedStyle(modal).transform !== "none") {
-    const modalRect = modal.getBoundingClientRect();
-    return {
-      top: data.top - modalRect.top,
-      left: data.left - modalRect.left,
-      width: data.width,
-    };
-  }
-
-  return {
-    top: data.top,
-    left: data.left,
-    width: data.width,
-  };
-}
-
 function buildBlockSelectors(customNodes: string[]): string {
   return [
     "p",
-    "li",
     "pre",
     "blockquote",
     "h1",
@@ -78,33 +60,263 @@ function buildBlockSelectors(customNodes: string[]): string {
     "h6",
     "img",
     "hr",
+    "ul",
+    "ol",
     "div[data-youtube-video]",
     ...customNodes.map((node) => `[data-type=${node}]`),
   ].join(", ");
 }
 
-function nodeDOMAtCoords(
-  coords: { x: number; y: number },
-  options: DragHandlePluginOptions,
-): Element | undefined {
-  const selectors = buildBlockSelectors(options.customNodes);
-  return document
-    .elementsFromPoint(coords.x, coords.y)
-    .find(
-      (elem) =>
-        elem.parentElement?.matches?.(".ProseMirror") || elem.matches(selectors),
-    );
+const ATOM_BLOCK_SELECTORS = "img, hr, div[data-youtube-video]";
+
+function isAtomBlockType(typeName: string): boolean {
+  return typeName === "image" || typeName === "youtube" || typeName === "horizontalRule";
 }
 
-function nodePosAtDOM(
-  node: Element,
+function isListBlockType(typeName: string): boolean {
+  return typeName === "bulletList" || typeName === "orderedList" || typeName === "taskList";
+}
+
+function resolveDomForTopLevelNode(
   view: EditorView,
+  topLevelPos: number,
+  selectors: string,
+): Element | null {
+  let dom: Node | null = view.nodeDOM(topLevelPos);
+  if (dom instanceof Text) {
+    dom = dom.parentNode;
+  }
+
+  if (dom instanceof Element && dom.matches(selectors)) {
+    return dom;
+  }
+
+  const domAtPos = view.domAtPos(topLevelPos + 1);
+  let element: Element | null =
+    domAtPos.node instanceof Element ? domAtPos.node : domAtPos.node.parentElement;
+
+  while (element && element !== view.dom) {
+    if (element.parentElement === view.dom && element.matches(selectors)) {
+      return element;
+    }
+    element = element.parentElement;
+  }
+
+  const childIndex = view.state.doc.resolve(topLevelPos + 1).index(0);
+  const domChild = view.dom.children.item(childIndex);
+  if (domChild instanceof Element && domChild.matches(selectors)) {
+    return domChild;
+  }
+
+  return null;
+}
+
+function getTopLevelBlockElement(
+  view: EditorView,
+  pos: number,
   options: DragHandlePluginOptions,
-): number | undefined {
-  const boundingRect = node.getBoundingClientRect();
+): Element | null {
+  const $pos = view.state.doc.resolve(pos);
+  if ($pos.depth < 1) {
+    return null;
+  }
+
+  const topLevelNode = $pos.node(1);
+  const topLevelType = topLevelNode.type.name;
+  const topLevelPos = $pos.before(1);
+
+  if (isListBlockType(topLevelType)) {
+    return resolveDomForTopLevelNode(view, topLevelPos, "ul, ol");
+  }
+
+  if (topLevelType === "image") {
+    return resolveDomForTopLevelNode(view, topLevelPos, "img");
+  }
+
+  if (topLevelType === "youtube") {
+    return resolveDomForTopLevelNode(view, topLevelPos, "div[data-youtube-video]");
+  }
+
+  return resolveDomForTopLevelNode(view, topLevelPos, buildBlockSelectors(options.customNodes));
+}
+
+function getVerticalAnchor(node: Element, pointerY?: number): Element {
+  if (node.matches(ATOM_BLOCK_SELECTORS)) {
+    return node;
+  }
+
+  if (node.matches("ul, ol")) {
+    const listItems = node.querySelectorAll(":scope > li");
+
+    if (pointerY !== undefined) {
+      for (const item of listItems) {
+        const itemRect = item.getBoundingClientRect();
+        if (pointerY >= itemRect.top && pointerY <= itemRect.bottom) {
+          const paragraph =
+            item.querySelector(":scope > p") ?? item.querySelector(":scope > div > p");
+          return paragraph instanceof HTMLElement ? paragraph : item;
+        }
+      }
+    }
+
+    const firstItem = listItems[0];
+    if (firstItem) {
+      const paragraph =
+        firstItem.querySelector(":scope > p") ?? firstItem.querySelector(":scope > div > p");
+      return paragraph instanceof HTMLElement ? paragraph : firstItem;
+    }
+  }
+
+  if (node.matches("blockquote")) {
+    const paragraph = node.querySelector(":scope > p");
+    if (paragraph instanceof HTMLElement) {
+      return paragraph;
+    }
+  }
+
+  return node;
+}
+
+function findTopLevelBlockFromTarget(
+  view: EditorView,
+  target: Element,
+  options: DragHandlePluginOptions,
+): Element | null {
+  if (!view.dom.contains(target)) {
+    return null;
+  }
+
+  const blockSelectors = buildBlockSelectors(options.customNodes);
+
+  const atomBlock = target.closest(ATOM_BLOCK_SELECTORS);
+  if (atomBlock instanceof Element && view.dom.contains(atomBlock)) {
+    return atomBlock;
+  }
+
+  const listContainer = target.closest("ul, ol");
+  if (listContainer instanceof Element) {
+    return listContainer;
+  }
+
+  let current: Element | null = target;
+  while (current && current !== view.dom) {
+    if (current.parentElement === view.dom && current.matches(blockSelectors)) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
+function blockFromPointerAt(
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+  options: DragHandlePluginOptions,
+): Element | null {
+  const proseMirrorRect = view.dom.getBoundingClientRect();
+
+  if (
+    clientY < proseMirrorRect.top ||
+    clientY > proseMirrorRect.bottom ||
+    clientX < proseMirrorRect.left
+  ) {
+    return null;
+  }
+
+  const clampedX = Math.min(clientX, proseMirrorRect.right - 1);
+  const elements = document.elementsFromPoint(clampedX, clientY);
+  for (const element of elements) {
+    if (!(element instanceof Element)) {
+      continue;
+    }
+
+    const block = findTopLevelBlockFromTarget(view, element, options);
+    if (block) {
+      return block;
+    }
+  }
+
+  const coords = view.posAtCoords({ left: clampedX, top: clientY });
+  if (!coords) {
+    return null;
+  }
+
+  return getTopLevelBlockElement(view, coords.pos, options);
+}
+
+function blockFromPointer(
+  view: EditorView,
+  clientX: number,
+  clientY: number,
+  options: DragHandlePluginOptions,
+): Element | null {
+  const atPointer = blockFromPointerAt(view, clientX, clientY, options);
+  if (atPointer) {
+    return atPointer;
+  }
+
+  const contentColumnX = clientX + 50 + options.dragHandleWidth;
+  return blockFromPointerAt(view, contentColumnX, clientY, options);
+}
+
+function resolveAtomNodePos(node: Element, view: EditorView): number | undefined {
+  const rect = node.getBoundingClientRect();
+  const coords = view.posAtCoords({
+    left: rect.left + rect.width / 2,
+    top: rect.top + Math.min(rect.height / 2, 24),
+  });
+  if (!coords) {
+    return undefined;
+  }
+
+  const $pos = view.state.doc.resolve(coords.pos);
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    if (isAtomBlockType($pos.node(depth).type.name)) {
+      return $pos.before(depth);
+    }
+  }
+
+  return undefined;
+}
+
+function getHandleColumnLeft(view: EditorView, handleWidth: number): number {
+  const proseMirrorStyle = window.getComputedStyle(view.dom);
+  const paddingLeft = Number.parseFloat(proseMirrorStyle.paddingLeft) || 0;
+  const borderLeft = Number.parseFloat(proseMirrorStyle.borderLeftWidth) || 0;
+  const proseMirrorRect = view.dom.getBoundingClientRect();
+
+  return proseMirrorRect.left + borderLeft + paddingLeft - handleWidth - HANDLE_OFFSET_PX;
+}
+
+function nodePosAtDOM(node: Element, view: EditorView): number | undefined {
+  if (node.matches(ATOM_BLOCK_SELECTORS)) {
+    return resolveAtomNodePos(node, view);
+  }
+
+  if (node.matches("ul, ol")) {
+    const rect = node.getBoundingClientRect();
+    const coords = view.posAtCoords({
+      left: rect.left + 4,
+      top: rect.top + 4,
+    });
+    if (!coords) {
+      return undefined;
+    }
+
+    const $pos = view.state.doc.resolve(coords.pos);
+    for (let depth = $pos.depth; depth > 0; depth -= 1) {
+      if (isListBlockType($pos.node(depth).type.name)) {
+        return $pos.before(depth);
+      }
+    }
+  }
+
+  const rect = node.getBoundingClientRect();
   return view.posAtCoords({
-    left: boundingRect.left + 50 + options.dragHandleWidth,
-    top: boundingRect.top + 1,
+    left: rect.left + 4,
+    top: rect.top + rect.height / 2,
   })?.inside;
 }
 
@@ -120,7 +332,9 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
   let listType = "";
   let isHandleDragging = false;
   let lastPointer: { x: number; y: number } | null = null;
+  let activeBlock: Element | null = null;
   let dragHandleElement: HTMLDivElement | null = null;
+  let editorView: EditorView | null = null;
 
   function hideDragHandle(): void {
     dragHandleElement?.classList.add("hide");
@@ -130,44 +344,54 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
     dragHandleElement?.classList.remove("hide");
   }
 
-  function positionDragHandle(node: Element): void {
-    if (!dragHandleElement) return;
+  function positionDragHandle(node: Element, pointerY?: number): void {
+    if (!dragHandleElement || !editorView) return;
 
-    const compStyle = window.getComputedStyle(node);
-    const parsedLineHeight = Number.parseInt(compStyle.lineHeight, 10);
-    const lineHeight = Number.isNaN(parsedLineHeight)
-      ? Number.parseInt(compStyle.fontSize, 10) * 1.2
-      : parsedLineHeight;
-    const paddingTop = Number.parseInt(compStyle.paddingTop, 10);
-    const rect = absoluteRect(node);
-    rect.top += (lineHeight - 24) / 2;
-    rect.top += Number.isNaN(paddingTop) ? 0 : paddingTop;
+    const verticalAnchor = getVerticalAnchor(node, pointerY);
+    const verticalRect = verticalAnchor.getBoundingClientRect();
 
-    if (node.matches("ul:not([data-type=taskList]) li, ol li")) {
-      rect.left -= options.dragHandleWidth;
+    const handleWidth = dragHandleElement.offsetWidth || options.dragHandleWidth;
+    let top: number;
+
+    if (verticalAnchor.matches(ATOM_BLOCK_SELECTORS)) {
+      top = verticalRect.top + 8;
+    } else {
+      const compStyle = window.getComputedStyle(verticalAnchor);
+      const parsedLineHeight = Number.parseInt(compStyle.lineHeight, 10);
+      const lineHeight = Number.isNaN(parsedLineHeight)
+        ? Number.parseInt(compStyle.fontSize, 10) * 1.2
+        : parsedLineHeight;
+      const paddingTop = Number.parseInt(compStyle.paddingTop, 10);
+      top =
+        verticalRect.top + (lineHeight - 24) / 2 + (Number.isNaN(paddingTop) ? 0 : paddingTop);
     }
 
-    rect.width = options.dragHandleWidth;
-    dragHandleElement.style.left = `${rect.left - rect.width}px`;
-    dragHandleElement.style.top = `${rect.top}px`;
+    const left = getHandleColumnLeft(editorView, handleWidth);
+
+    dragHandleElement.style.left = `${left}px`;
+    dragHandleElement.style.top = `${top}px`;
+    activeBlock = node;
     showDragHandle();
+  }
+
+  function updateHandleFromPointer(view: EditorView, clientX: number, clientY: number): void {
+    const block = blockFromPointer(view, clientX, clientY, options);
+    if (!block || block.closest(".not-draggable")) {
+      hideDragHandle();
+      return;
+    }
+
+    positionDragHandle(block, clientY);
   }
 
   function handleDragStart(event: DragEvent, view: EditorView): void {
     view.focus();
     if (!event.dataTransfer) return;
 
-    const node = nodeDOMAtCoords(
-      {
-        x: event.clientX + 50 + options.dragHandleWidth,
-        y: event.clientY,
-      },
-      options,
-    );
-
+    const node = activeBlock ?? blockFromPointer(view, event.clientX, event.clientY, options);
     if (!(node instanceof Element)) return;
 
-    let draggedNodePos = nodePosAtDOM(node, view, options);
+    let draggedNodePos = nodePosAtDOM(node, view);
     if (draggedNodePos === undefined || draggedNodePos < 0) return;
 
     draggedNodePos = calcNodePos(draggedNodePos, view);
@@ -207,9 +431,10 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
 
     if (
       view.state.selection instanceof NodeSelection &&
-      view.state.selection.node.type.name === "listItem"
+      (view.state.selection.node.type.name === "listItem" ||
+        isListBlockType(view.state.selection.node.type.name))
     ) {
-      listType = node.parentElement?.tagName ?? "";
+      listType = node.matches("ol") ? "OL" : node.matches("ul") ? "UL" : "";
     }
 
     const slice = view.state.selection.content();
@@ -224,20 +449,34 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
   }
 
   function hideHandleOnEditorOut(event: MouseEvent): void {
-    if (event.target instanceof Element) {
-      const relatedTarget = event.relatedTarget;
-      const isInsideEditor =
-        relatedTarget instanceof Element &&
-        (relatedTarget.classList.contains("tiptap") ||
-          relatedTarget.classList.contains("drag-handle"));
-      if (isInsideEditor) return;
+    const relatedTarget = event.relatedTarget;
+    if (
+      relatedTarget instanceof Element &&
+      (relatedTarget.closest(".ProseMirror") ||
+        relatedTarget.closest(".tiptap") ||
+        relatedTarget.closest(".drag-handle") ||
+        relatedTarget.closest(".moveable-control-box") ||
+        relatedTarget.closest(".moveable-line"))
+    ) {
+      return;
     }
     hideDragHandle();
+  }
+
+  function handlePointerMove(clientX: number, clientY: number): void {
+    if (!editorView?.editable) {
+      return;
+    }
+
+    lastPointer = { x: clientX, y: clientY };
+    updateHandleFromPointer(editorView, clientX, clientY);
   }
 
   return new Plugin({
     key: new PluginKey(options.pluginKey),
     view: (view) => {
+      editorView = view;
+
       const handleBySelector = options.dragHandleSelector
         ? document.querySelector<HTMLDivElement>(options.dragHandleSelector)
         : null;
@@ -270,6 +509,11 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
       dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
       dragHandleElement.addEventListener("drag", onDragHandleDrag);
       dragHandleElement.addEventListener("dragend", onDragHandleDragEnd);
+      dragHandleElement.addEventListener("mouseenter", () => {
+        if (activeBlock) {
+          showDragHandle();
+        }
+      });
       hideDragHandle();
 
       if (!handleBySelector) {
@@ -280,21 +524,15 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
 
       const scrollContainer = resolveEditorScrollContainer(view.dom);
       const onScroll = () => {
-        if (!lastPointer || !dragHandleElement) return;
-        const node = nodeDOMAtCoords(
-          {
-            x: lastPointer.x + 50 + options.dragHandleWidth,
-            y: lastPointer.y,
-          },
-          options,
-        );
-        if (node instanceof Element) {
-          positionDragHandle(node);
-        } else {
-          hideDragHandle();
-        }
+        if (!lastPointer || !editorView) return;
+        updateHandleFromPointer(editorView, lastPointer.x, lastPointer.y);
       };
       scrollContainer.addEventListener("scroll", onScroll, { passive: true });
+
+      const onContainerMouseMove = (event: MouseEvent) => {
+        handlePointerMove(event.clientX, event.clientY);
+      };
+      scrollContainer.addEventListener("mousemove", onContainerMouseMove);
 
       return {
         destroy: () => {
@@ -305,7 +543,9 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
           dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
           dragHandleElement?.removeEventListener("dragend", onDragHandleDragEnd);
           scrollContainer.removeEventListener("scroll", onScroll);
+          scrollContainer.removeEventListener("mousemove", onContainerMouseMove);
           dragHandleElement = null;
+          editorView = null;
           view.dom.parentElement?.removeEventListener("mouseout", hideHandleOnEditorOut);
         },
       };
@@ -315,24 +555,21 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
         mousemove: (view, event) => {
           if (!view.editable) return false;
 
-          lastPointer = { x: event.clientX, y: event.clientY };
-          const node = nodeDOMAtCoords(
-            {
-              x: event.clientX + 50 + options.dragHandleWidth,
-              y: event.clientY,
-            },
-            options,
-          );
-
-          const notDragging = node?.closest(".not-draggable");
-          const excludedTagList = options.excludedTags.concat(["ol", "ul"]).join(", ");
-
-          if (!(node instanceof Element) || node.matches(excludedTagList) || notDragging) {
-            hideDragHandle();
+          handlePointerMove(event.clientX, event.clientY);
+          return false;
+        },
+        mouseleave: (_view, event) => {
+          const relatedTarget = event.relatedTarget;
+          if (
+            relatedTarget instanceof Element &&
+            (relatedTarget.closest(".drag-handle") ||
+              relatedTarget.closest(".ProseMirror") ||
+              relatedTarget.closest(".moveable-control-box") ||
+              relatedTarget.closest(".moveable-line"))
+          ) {
             return false;
           }
-
-          positionDragHandle(node);
+          hideDragHandle();
           return false;
         },
         keydown: () => {
@@ -395,8 +632,7 @@ function DragHandlePlugin(options: DragHandlePluginOptions): Plugin {
 }
 
 /**
- * CMS drag handle with support for images, YouTube embeds, first paragraph,
- * and scrollable editor containers.
+ * CMS drag handle for top-level blocks, including whole lists (not individual items).
  */
 export const CmsDragHandle = Extension.create({
   name: "cmsDragHandle",

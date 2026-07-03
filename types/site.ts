@@ -1,5 +1,13 @@
 import type { FooterConfig, HeaderConfig, ThemeConfig } from "@/schemas/site-layout.schema";
 
+export type SiteVerificationProvider = "google" | "bing" | "other";
+
+export type SiteVerificationMetaTag = {
+  provider: SiteVerificationProvider;
+  name: string;
+  content: string;
+};
+
 export type Site = {
   id: string;
   workspaceId: string;
@@ -11,6 +19,7 @@ export type Site = {
   seoDefaultTitle: string | null;
   seoDefaultDescription: string | null;
   seoDefaultOgImageId: string | null;
+  verificationMetaTags: SiteVerificationMetaTag[];
   createdAt: string;
   updatedAt: string;
 };

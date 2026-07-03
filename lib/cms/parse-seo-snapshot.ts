@@ -10,5 +10,6 @@ export function parseSeoSnapshot(snapshot: Record<string, unknown>): SeoFieldsIn
     seoCanonical: (snapshot.seoCanonical as string | null) ?? null,
     seoKeywords: (snapshot.seoKeywords as string[]) ?? [],
     ogImageId: (snapshot.ogImageId as string | null) ?? null,
+    usePostDescriptionForSeo: (snapshot.usePostDescriptionForSeo as boolean | undefined) ?? false,
   };
 }

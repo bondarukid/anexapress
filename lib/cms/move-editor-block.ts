@@ -57,6 +57,37 @@ export function moveTopLevelEditorBlock(
 }
 
 /**
+ * Deletes the block at the given document position.
+ */
+export function deleteEditorBlockAtPos(editor: EditorLike, pos: number): boolean {
+  const { doc } = editor.state;
+  if (!doc.nodeAt(pos)) {
+    return false;
+  }
+
+  const tr = editor.state.tr.setSelection(NodeSelection.create(doc, pos)).deleteSelection();
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+/**
+ * Inserts a copy of the block at the given position immediately after it.
+ */
+export function duplicateEditorBlockAtPos(editor: EditorLike, pos: number): boolean {
+  const { doc } = editor.state;
+  const node = doc.nodeAt(pos);
+  if (!node) {
+    return false;
+  }
+
+  const insertPos = pos + node.nodeSize;
+  const tr = editor.state.tr.insert(insertPos, node.copy(node.content));
+  tr.setSelection(NodeSelection.create(tr.doc, insertPos));
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+/**
  * Selects a block at the given document position and scrolls it into view.
  */
 export function selectEditorBlockAtPos(editor: EditorLike, pos: number): void {

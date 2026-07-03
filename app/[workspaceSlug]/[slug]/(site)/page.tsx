@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BlogIndexView } from "@/components/cms/public/blog-index-view";
 import { BlockContentRenderer } from "@/components/cms/renderer/block-content-renderer";
+import { buildSitePublicMetadata } from "@/lib/cms/site-metadata";
 import { getSiteHomePage, getSiteBySlug } from "@/lib/cms/resolve-site";
 import { getPublishedSitePage } from "@/services/site-page.service";
 import { listPublishedPostsForSite } from "@/services/post.service";
@@ -9,6 +11,24 @@ import { listPublishedPostsForSite } from "@/services/post.service";
 type SiteHomePageProps = {
   params: Promise<{ workspaceSlug: string; slug: string }>;
 };
+
+export async function generateMetadata({ params }: SiteHomePageProps): Promise<Metadata> {
+  const { workspaceSlug, slug: siteSlug } = await params;
+  const resolved = await getSiteBySlug(workspaceSlug, siteSlug);
+  if (!resolved) return { title: "Not found" };
+
+  const homePage = await getSiteHomePage(resolved.site);
+  if (!homePage) return { title: resolved.site.name };
+
+  return buildSitePublicMetadata({
+    workspaceSlug,
+    siteSlug,
+    site: resolved.site,
+    path: "/",
+    title: homePage.seoTitle ?? homePage.title,
+    description: homePage.seoDescription ?? resolved.site.seoDefaultDescription ?? undefined,
+  });
+}
 
 export default async function SiteHomePage({ params }: SiteHomePageProps) {
   const { workspaceSlug, slug: siteSlug } = await params;
@@ -22,7 +42,8 @@ export default async function SiteHomePage({ params }: SiteHomePageProps) {
     const posts = await listPublishedPostsForSite(resolved.site.id);
     return (
       <BlogIndexView
-        title={homePage.title}
+        heading={homePage.title}
+        description={homePage.seoDescription ?? resolved.site.seoDefaultDescription}
         posts={posts}
         basePath={`/${workspaceSlug}/${siteSlug}`}
       />

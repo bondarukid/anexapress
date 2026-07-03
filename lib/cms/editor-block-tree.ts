@@ -1,5 +1,7 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
+import { getBlockTitleFromNode } from "@/lib/cms/editor-block-title";
+
 export type EditorBlockTreeItem = {
   id: string;
   pos: number;
@@ -12,17 +14,19 @@ export type EditorBlockTreeItem = {
 
 const ATOM_BLOCK_TYPES = new Set(["image", "youtube", "horizontalRule"]);
 
-/** Blocks whose children are inline text only — not shown as nested outline rows. */
-const INLINE_CONTENT_BLOCK_TYPES = new Set(["heading", "paragraph", "codeBlock"]);
+/** Blocks shown as a single outline row (no nested children). */
+const FLAT_OUTLINE_BLOCK_TYPES = new Set([
+  "heading",
+  "paragraph",
+  "codeBlock",
+  "blockquote",
+]);
 
 export function getEditorBlockLabel(node: ProseMirrorNode): string {
   switch (node.type.name) {
     case "heading":
-      return `Heading ${String(node.attrs.level ?? "")}`.trim();
-    case "paragraph": {
-      const text = node.textContent.trim();
-      return text.length > 0 ? text.slice(0, 48) : "Paragraph";
-    }
+    case "paragraph":
+      return getBlockTitleFromNode(node);
     case "bulletList":
       return "Bullet list";
     case "orderedList":
@@ -89,7 +93,7 @@ function walkNode(
     children: [],
   };
 
-  if (node.childCount === 0 || INLINE_CONTENT_BLOCK_TYPES.has(node.type.name)) {
+  if (node.childCount === 0 || FLAT_OUTLINE_BLOCK_TYPES.has(node.type.name)) {
     return item;
   }
 

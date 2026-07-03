@@ -4,9 +4,9 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { selectBlockTextContent } from "@/lib/cms/editor-selection";
 
 /**
- * Returns the plain text content used as the block name in the outline.
+ * Returns the editable text content inside a paragraph or heading block.
  */
-export function getEditorBlockName(doc: ProseMirrorNode, blockPos: number): string {
+export function getEditorBlockContent(doc: ProseMirrorNode, blockPos: number): string {
   const node = doc.nodeAt(blockPos);
   if (!node) {
     return "";
@@ -16,12 +16,12 @@ export function getEditorBlockName(doc: ProseMirrorNode, blockPos: number): stri
 }
 
 /**
- * Replaces the selected block's text content with a new name.
+ * Replaces inline text content inside a text block (not the block title).
  */
-export function setEditorBlockName(
+export function setEditorBlockContent(
   editor: CmsEditorInstance,
   blockPos: number,
-  name: string,
+  content: string,
 ): void {
   const range = selectBlockTextContent(editor.state.doc, blockPos);
   if (!range) {
@@ -33,6 +33,6 @@ export function setEditorBlockName(
     .focus()
     .setTextSelection(range)
     .deleteSelection()
-    .insertContent(name)
+    .insertContent(content)
     .run();
 }

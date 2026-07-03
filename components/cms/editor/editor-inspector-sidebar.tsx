@@ -20,13 +20,17 @@ type EditorInspectorSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 function EditorInspectorSidebarLabel() {
-  const { documentLabel, selectedBlock } = useEditorInspector();
+  const { documentLabel, hasDocumentSettings, selectedBlock } = useEditorInspector();
 
-  return (
-    <SidebarGroupLabel>
-      {selectedBlock ? selectedBlock.label : `${documentLabel} settings`}
-    </SidebarGroupLabel>
-  );
+  if (selectedBlock) {
+    return <SidebarGroupLabel>{selectedBlock.label}</SidebarGroupLabel>;
+  }
+
+  if (hasDocumentSettings) {
+    return <SidebarGroupLabel>{`${documentLabel} settings`}</SidebarGroupLabel>;
+  }
+
+  return <SidebarGroupLabel>Inspector</SidebarGroupLabel>;
 }
 
 /**

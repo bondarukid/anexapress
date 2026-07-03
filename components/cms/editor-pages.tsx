@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { PostEditorShell } from "@/components/cms/editor/post-editor-shell";
+import { formatUserDisplayName } from "@/lib/cms/post-author";
 import { resolveWorkspaceFromRoute } from "@/lib/dashboard/workspace-route";
 import { getPostEditorData, listPostVersions } from "@/services/post.service";
 import { getCurrentUser } from "@/services/user";
@@ -30,5 +31,12 @@ export async function EditorPostPage({ params }: PageProps) {
 
   if (!editorData) notFound();
 
-  return <PostEditorShell data={editorData} versions={versions} />;
+  return (
+    <PostEditorShell
+      data={editorData}
+      versions={versions}
+      userDisplayName={formatUserDisplayName(user)}
+      userAvatarUrl={user.avatarUrl}
+    />
+  );
 }

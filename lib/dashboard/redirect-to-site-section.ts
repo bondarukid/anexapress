@@ -15,7 +15,7 @@ type WorkspaceRouteParams = {
 export async function redirectToDefaultSiteSection(
   routeParams: WorkspaceRouteParams,
   userId: string,
-  section: "/content" | "/content/new" | "/media" | "/files" | "/pages",
+  section: "/content" | "/media" | "/files" | "/pages",
 ): Promise<never> {
   const workspace = await resolveWorkspaceFromRoute(routeParams, userId);
   if (!workspace) notFound();

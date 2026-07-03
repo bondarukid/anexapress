@@ -15,7 +15,6 @@ import {
   UpdatedImage,
   Youtube,
   createSuggestionItems,
-  getUrlFromString,
   renderItems,
 } from "novel";
 import { common, createLowlight } from "lowlight";
@@ -35,8 +34,9 @@ import {
 } from "lucide-react";
 import { createElement } from "react";
 
-import type { Editor } from "@tiptap/core";
+import { resolveHeadingBlockTitle, resolveParagraphBlockTitle } from "@/lib/cms/editor-block-title";
 
+import type { Editor } from "@tiptap/core";
 import TextAlign from "@tiptap/extension-text-align";
 
 import { BlockMoveAnimation } from "@/components/cms/editor/extensions/block-move-animation";
@@ -44,12 +44,13 @@ import { CmsDragHandle } from "@/components/cms/editor/extensions/cms-drag-handl
 import {
   CmsHeadingBlock,
   CmsParagraphBlock,
+  CmsBlockTitleSync,
 } from "@/components/cms/editor/extensions/cms-paragraph-block";
 import { TrailingParagraph } from "@/components/cms/editor/extensions/trailing-paragraph";
-import { insertAtomBlockWithTrailingParagraph } from "@/lib/cms/editor-insert-helpers";
 
 export type EditorExtensionOptions = {
   onImageRequest?: () => void;
+  onYoutubeRequest?: () => void;
 };
 
 const lowlight = createLowlight(common);
@@ -78,7 +79,13 @@ export function buildSuggestionItems(options: EditorExtensionOptions = {}) {
       searchTerms: ["p", "paragraph"],
       icon: createElement(Text, { size: 18 }),
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setParagraph()
+          .updateAttributes("paragraph", { blockTitle: resolveParagraphBlockTitle("paragraph") })
+          .run();
       },
     },
     {
@@ -87,7 +94,12 @@ export function buildSuggestionItems(options: EditorExtensionOptions = {}) {
       searchTerms: ["title", "big", "large"],
       icon: createElement(Heading1, { size: 18 }),
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setNode("heading", { level: 1, blockTitle: resolveHeadingBlockTitle(1) })
+          .run();
       },
     },
     {
@@ -96,7 +108,12 @@ export function buildSuggestionItems(options: EditorExtensionOptions = {}) {
       searchTerms: ["subtitle", "medium"],
       icon: createElement(Heading2, { size: 18 }),
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setNode("heading", { level: 2, blockTitle: resolveHeadingBlockTitle(2) })
+          .run();
       },
     },
     {
@@ -105,7 +122,12 @@ export function buildSuggestionItems(options: EditorExtensionOptions = {}) {
       searchTerms: ["subtitle", "small"],
       icon: createElement(Heading3, { size: 18 }),
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setNode("heading", { level: 3, blockTitle: resolveHeadingBlockTitle(3) })
+          .run();
       },
     },
     {
@@ -169,15 +191,8 @@ export function buildSuggestionItems(options: EditorExtensionOptions = {}) {
       searchTerms: ["video", "youtube", "embed"],
       icon: createElement(Video, { size: 18 }),
       command: ({ editor, range }) => {
-        const url = window.prompt("YouTube URL");
-        const videoUrl = url ? getUrlFromString(url) : null;
-        if (videoUrl) {
-          editor.chain().focus().deleteRange(range).run();
-          insertAtomBlockWithTrailingParagraph(editor, {
-            type: "youtube",
-            attrs: { src: videoUrl },
-          });
-        }
+        editor.chain().focus().deleteRange(range).run();
+        options.onYoutubeRequest?.();
       },
     },
     {
@@ -206,8 +221,12 @@ export function buildSlashCommand(options: EditorExtensionOptions = {}) {
 export function buildEditorExtensions(options: EditorExtensionOptions = {}) {
   return [
     StarterKit.configure({
-      bulletList: { HTMLAttributes: { class: "list-disc ml-4" } },
-      orderedList: { HTMLAttributes: { class: "list-decimal ml-4" } },
+      bulletList: {
+        HTMLAttributes: { class: "cms-bullet-list" },
+      },
+      orderedList: {
+        HTMLAttributes: { class: "cms-ordered-list" },
+      },
       codeBlock: false,
       horizontalRule: false,
       paragraph: false,
@@ -215,19 +234,29 @@ export function buildEditorExtensions(options: EditorExtensionOptions = {}) {
     }),
     CmsParagraphBlock,
     CmsHeadingBlock,
+    CmsBlockTitleSync,
     TextAlign.configure({
       types: ["paragraph", "heading"],
       alignments: ["left", "center", "right", "justify"],
       defaultAlignment: "left",
     }),
     Placeholder.configure({
-      placeholder: ({ node }) => {
+      placeholder: ({ node, editor, pos }) => {
         if (node.type.name === "heading") {
           return `Heading ${node.attrs.level}`;
         }
+
+        const $pos = editor.state.doc.resolve(pos);
+        for (let depth = $pos.depth; depth > 0; depth -= 1) {
+          const ancestorType = $pos.node(depth).type.name;
+          if (ancestorType === "listItem" || ancestorType === "taskItem") {
+            return "";
+          }
+        }
+
         return "Press '/' for commands, or start writing…";
       },
-      includeChildren: true,
+      includeChildren: false,
       showOnlyCurrent: false,
     }),
     TiptapLink.configure({
@@ -235,9 +264,9 @@ export function buildEditorExtensions(options: EditorExtensionOptions = {}) {
       HTMLAttributes: { class: "text-primary underline underline-offset-4" },
     }),
     mediaImageExtension,
-    TaskList.configure({ HTMLAttributes: { class: "not-prose pl-2" } }),
+    TaskList.configure({ HTMLAttributes: { class: "cms-task-list" } }),
     TaskItem.configure({
-      HTMLAttributes: { class: "flex items-start gap-2" },
+      HTMLAttributes: { class: "cms-task-item" },
       nested: true,
     }),
     HorizontalRule,

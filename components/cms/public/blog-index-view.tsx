@@ -1,37 +1,62 @@
-import Link from "next/link";
-import { format } from "date-fns";
-
-import type { PostSummary } from "@/types/post";
+import { Badge } from "@/components/ui/badge";
+import { BlogPostCard } from "@/components/cms/public/blog-post-card";
+import { cn } from "@/lib/utils";
+import type { BlogPostListItem } from "@/types/post";
 
 type BlogIndexViewProps = {
-  title: string;
-  posts: PostSummary[];
+  heading: string;
+  posts: BlogPostListItem[];
   basePath: string;
+  tagline?: string | null;
+  description?: string | null;
+  className?: string;
 };
 
-export function BlogIndexView({ title, posts, basePath }: BlogIndexViewProps) {
+/**
+ * Public blog index — card grid for the site feed and blog_index home pages.
+ */
+export function BlogIndexView({
+  heading,
+  posts,
+  basePath,
+  tagline = "Latest Updates",
+  description,
+  className,
+}: BlogIndexViewProps) {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <header className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-      </header>
-      <ul className="space-y-8">
-        {posts.map((post) => (
-          <li key={post.id} className="border-border border-b pb-8 last:border-0">
-            <Link href={`${basePath}/blog/${post.slug}`} className="group block">
-              <h2 className="group-hover:text-primary text-xl font-semibold">{post.title}</h2>
-              {post.publishedAt ? (
-                <time className="text-muted-foreground mt-1 block text-sm">
-                  {format(new Date(post.publishedAt), "MMMM d, yyyy")}
-                </time>
-              ) : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      {posts.length === 0 ? (
-        <p className="text-muted-foreground">No published posts yet.</p>
-      ) : null}
-    </main>
+    <section className={cn("pt-8 pb-12 md:pt-10 md:pb-16 lg:pb-20", className)}>
+      <div className="container mx-auto flex flex-col items-center gap-8 px-6">
+        <div className="text-center">
+          {tagline ? (
+            <Badge variant="secondary" className="mb-4">
+              {tagline}
+            </Badge>
+          ) : null}
+          <h1 className="mb-3 text-4xl tracking-tighter text-pretty md:mb-4 lg:max-w-3xl lg:text-5xl">
+            {heading}
+          </h1>
+          {description ? (
+            <p className="text-muted-foreground mb-8 md:text-base lg:max-w-2xl lg:text-lg">
+              {description}
+            </p>
+          ) : null}
+        </div>
+
+        {posts.length > 0 ? (
+          <div className="grid w-full gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            {posts.map((post, index) => (
+              <BlogPostCard
+                key={post.id}
+                post={post}
+                href={`${basePath}/blog/${post.slug}`}
+                priority={index === 0}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center">No published posts yet.</p>
+        )}
+      </div>
+    </section>
   );
 }

@@ -4,18 +4,30 @@ import { parseSeoSnapshot } from "@/lib/cms/parse-seo-snapshot";
 import {
   mapPostRow,
   mapPostVersionRow,
+  buildDraftSnapshot,
+  applyVersionSnapshotToPost,
+  applyPublishedVersionToPost,
+  parseDraftSlugFromSnapshot,
+  parseDisplaySnapshot,
+  postDraftDiffersFromPublished,
   seoInputToDb,
-  seoToSnapshot,
 } from "@/lib/cms/post-mappers";
 import {
   PERM_CONTENT_CREATE,
   PERM_CONTENT_PUBLISH,
 } from "@/lib/team/permissions";
 import { requireWorkspacePermission } from "@/services/team";
+import { getMediaById } from "@/services/media.service";
+import { getSitePublicSlugs, resolveProxiedAuthorAvatarUrl } from "@/services/author-avatar.service";
+import { getProfileAvatarUrlByUserId } from "@/services/user";
+import { resolvePostAuthorAvatarUrl, isPostAuthorProfile } from "@/lib/cms/post-author";
+import { resolvePostCoverImageUrl } from "@/lib/cms/post-cover-image";
 import type { CreatePostInput, SaveDraftInput } from "@/schemas/post.schema";
 import type {
+  BlogPostListItem,
   PostActionResult,
   PostEditorData,
+  PostStatus,
   PostSummary,
   PostVersionSummary,
   PublishedPost,
@@ -23,8 +35,101 @@ import type {
 } from "@/types/post";
 import type { TiptapContent } from "@/types/tiptap";
 
-const POST_SELECT =
-  "id, workspace_id, site_id, blog_page_id, slug, title, status, published_at, seo_title, seo_description, seo_canonical, seo_keywords, og_image_id, current_draft_version_id, published_version_id, created_by, updated_by, created_at, updated_at";
+import {
+  fetchPostRow,
+  POST_SELECT,
+  updatePostRow,
+} from "@/lib/cms/post-query";
+
+type PostVersionCompareSource = {
+  title: string;
+  content: unknown;
+  seo_snapshot: Record<string, unknown> | null;
+};
+
+async function resolveHasUnpublishedChanges(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  publishedVersionId: string | null,
+  draftVersion: PostVersionCompareSource,
+): Promise<boolean> {
+  if (!publishedVersionId) return false;
+
+  const { data: publishedVersion } = await supabase
+    .from("post_versions")
+    .select("title, content, seo_snapshot")
+    .eq("id", publishedVersionId)
+    .maybeSingle();
+
+  if (!publishedVersion) return false;
+
+  return postDraftDiffersFromPublished(draftVersion, {
+    title: publishedVersion.title,
+    content: publishedVersion.content,
+    seo_snapshot: (publishedVersion.seo_snapshot ?? {}) as Record<string, unknown>,
+  });
+}
+
+/**
+ * Builds public post payload from live post row + published version snapshot.
+ */
+async function resolvePublishedPost(
+  postRow: import("@/lib/cms/post-query").PostRowDb,
+  versionRow: {
+    title: string;
+    content: unknown;
+    seo_snapshot: Record<string, unknown> | null;
+  },
+): Promise<PublishedPost> {
+  const base = mapPostRow(postRow);
+  const snapshot = (versionRow.seo_snapshot ?? {}) as Record<string, unknown>;
+  const merged = applyPublishedVersionToPost(base, versionRow.title, snapshot);
+
+  const [ogMedia, authorMedia, siteSlugs] = await Promise.all([
+    merged.ogImageId ? getMediaById(merged.ogImageId) : Promise.resolve(null),
+    merged.authorAvatarId ? getMediaById(merged.authorAvatarId) : Promise.resolve(null),
+    postRow.site_id ? getSitePublicSlugs(postRow.site_id) : Promise.resolve(null),
+  ]);
+
+  const customAvatarUrl = authorMedia?.publicUrl ?? null;
+
+  let profileAvatarUrl: string | null = null;
+  if (isPostAuthorProfile(merged.authorName) && siteSlugs) {
+    profileAvatarUrl = await resolveProxiedAuthorAvatarUrl({
+      siteSlugs,
+      userId: postRow.created_by,
+    });
+  }
+
+  return {
+    ...merged,
+    content: versionRow.content as TiptapContent,
+    ogImageUrl: ogMedia?.publicUrl ?? null,
+    authorAvatarUrl: resolvePostAuthorAvatarUrl({
+      authorName: merged.authorName,
+      customAvatarUrl,
+      profileAvatarUrl,
+    }),
+  };
+}
+
+async function findPostSlugConflict(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  slug: string,
+  workspaceId: string,
+  siteId: string | null,
+  excludePostId: string,
+): Promise<boolean> {
+  let query = supabase.from("posts").select("id").eq("slug", slug).neq("id", excludePostId);
+
+  if (siteId) {
+    query = query.eq("site_id", siteId);
+  } else {
+    query = query.eq("workspace_id", workspaceId);
+  }
+
+  const { data } = await query.maybeSingle();
+  return data != null;
+}
 
 /**
  * Lists posts for a workspace dashboard table, optionally filtered by site.
@@ -125,12 +230,12 @@ export async function createPost(
 export async function getPostEditorData(
   workspaceId: string,
   postId: string,
-  _userId: string,
+  userId: string,
 ): Promise<PostEditorData | null> {
   const supabase = await createClient();
 
-  const [postRes, createPerm, publishPerm] = await Promise.all([
-    supabase.from("posts").select(POST_SELECT).eq("id", postId).eq("workspace_id", workspaceId).maybeSingle(),
+  const [postLookup, createPerm, publishPerm] = await Promise.all([
+    fetchPostRow(supabase, POST_SELECT, { postId, workspaceId }),
     supabase.rpc("has_effective_workspace_permission", {
       ws_id: workspaceId,
       perm_key: PERM_CONTENT_CREATE,
@@ -141,14 +246,20 @@ export async function getPostEditorData(
     }),
   ]);
 
-  if (postRes.error || !postRes.data) {
+  if (postLookup.error) {
+    console.error("[getPostEditorData] post query failed:", postLookup.error);
     return null;
   }
 
-  const post = mapPostRow(postRes.data);
+  if (!postLookup.data) {
+    return null;
+  }
+
+  const post = mapPostRow(postLookup.data);
   const draftVersionId = post.currentDraftVersionId;
 
   if (!draftVersionId) {
+    console.error("[getPostEditorData] post has no current_draft_version_id:", postId);
     return null;
   }
 
@@ -159,24 +270,63 @@ export async function getPostEditorData(
     .maybeSingle();
 
   if (versionError || !versionRow) {
+    if (versionError) {
+      console.error("[getPostEditorData] draft version query failed:", versionError.message);
+    }
     return null;
   }
 
+  const snapshot = (versionRow.seo_snapshot ?? {}) as Record<string, unknown>;
+  const mergedPost = applyVersionSnapshotToPost(post, versionRow.title, snapshot);
+  const draftSlug = parseDraftSlugFromSnapshot(snapshot) ?? post.slug;
+
+  const [customAuthorMedia, profileAvatarUrl] = await Promise.all([
+    mergedPost.authorAvatarId ? getMediaById(mergedPost.authorAvatarId) : Promise.resolve(null),
+    getProfileAvatarUrlByUserId(userId),
+  ]);
+
+  const authorAvatarUrl = resolvePostAuthorAvatarUrl({
+    authorName: mergedPost.authorName,
+    customAvatarUrl: customAuthorMedia?.publicUrl ?? null,
+    profileAvatarUrl,
+  });
+
+  const hasUnpublishedChanges = await resolveHasUnpublishedChanges(
+    supabase,
+    post.publishedVersionId,
+    {
+      title: versionRow.title,
+      content: versionRow.content,
+      seo_snapshot: snapshot,
+    },
+  );
+
   return {
-    post,
+    post: { ...mergedPost, slug: draftSlug },
     draftVersion: mapPostVersionRow(versionRow),
     canCreate: createPerm.data === true,
     canPublish: publishPerm.data === true,
+    authorAvatarUrl,
+    hasUnpublishedChanges,
   };
 }
 
 /**
  * Autosaves draft content and optional SEO/meta fields.
+ * Updates the current draft version in place — never creates a published version.
+ * Use {@link publishPost} to push draft changes live.
  */
 export async function saveDraft(
   userId: string,
   input: SaveDraftInput,
-): Promise<PostActionResult<{ savedAt: string }>> {
+): Promise<
+  PostActionResult<{
+    savedAt: string;
+    status: PostStatus;
+    slug: string;
+    hasUnpublishedChanges: boolean;
+  }>
+> {
   const guard = await requireWorkspacePermission(input.workspaceId, PERM_CONTENT_CREATE);
   if (!guard.success) {
     return { success: false, error: guard.error, code: "forbidden" };
@@ -184,10 +334,20 @@ export async function saveDraft(
 
   const supabase = await createClient();
   const seo = seoInputToDb(input.seo);
+  const display = input.display;
+  const draftSnapshot = buildDraftSnapshot(
+    {
+      ...seo,
+      seoDescription: input.seo?.seoDescription ?? seo.seoDescription,
+      usePostDescriptionForSeo: input.seo?.usePostDescriptionForSeo ?? false,
+    },
+    display,
+    { slug: input.slug ?? null },
+  );
 
   const { data: post, error: postError } = await supabase
     .from("posts")
-    .select("id, current_draft_version_id, title")
+    .select("id, current_draft_version_id, published_version_id, title, status, slug, site_id")
     .eq("id", input.postId)
     .eq("workspace_id", input.workspaceId)
     .maybeSingle();
@@ -196,15 +356,15 @@ export async function saveDraft(
     return { success: false, error: "Post not found.", code: "not_found" };
   }
 
+  const hasPublishedVersion = Boolean(post.published_version_id);
   const title = input.title ?? post.title;
-  const seoSnapshot = seoToSnapshot(seo);
 
   const { error: versionError } = await supabase
     .from("post_versions")
     .update({
       content: input.content,
       title,
-      seo_snapshot: seoSnapshot,
+      seo_snapshot: draftSnapshot,
       is_current: true,
     })
     .eq("id", post.current_draft_version_id);
@@ -215,29 +375,90 @@ export async function saveDraft(
 
   const postUpdate: Record<string, unknown> = {
     updated_by: userId,
-    seo_title: seo.seoTitle,
-    seo_description: seo.seoDescription,
-    seo_canonical: seo.seoCanonical,
-    seo_keywords: seo.seoKeywords,
-    og_image_id: seo.ogImageId,
   };
 
-  if (input.title) {
-    postUpdate.title = input.title;
+  if (!hasPublishedVersion) {
+    if (display) {
+      postUpdate.description = display.description ?? null;
+      postUpdate.author_name = display.authorName ?? null;
+      postUpdate.author_avatar_id = display.authorAvatarId ?? null;
+    }
   }
 
-  const { error: metaError } = await supabase
-    .from("posts")
-    .update(postUpdate)
-    .eq("id", input.postId);
+  let nextSlug = parseDraftSlugFromSnapshot(draftSnapshot) ?? post.slug;
 
-  if (metaError) {
-    return { success: false, error: metaError.message };
+  if (!hasPublishedVersion && input.slug && input.slug !== post.slug) {
+    const slugTaken = await findPostSlugConflict(
+      supabase,
+      input.slug,
+      input.workspaceId,
+      post.site_id,
+      input.postId,
+    );
+
+    if (slugTaken) {
+      return {
+        success: false,
+        error: "A post with this slug already exists.",
+        code: "validation",
+      };
+    }
+
+    postUpdate.slug = input.slug;
+    nextSlug = input.slug;
+  }
+
+  if (!hasPublishedVersion && Object.keys(postUpdate).length > 1) {
+    const { error: metaError } = await updatePostRow(supabase, input.postId, postUpdate);
+    if (metaError) {
+      return { success: false, error: metaError };
+    }
+  } else {
+    await supabase.from("posts").update({ updated_by: userId }).eq("id", input.postId);
   }
 
   await syncPostBlocks(input.postId, post.current_draft_version_id, input.content as TiptapContent);
 
-  return { success: true, data: { savedAt: new Date().toISOString() } };
+  let nextStatus = post.status as PostStatus;
+
+  if (input.status && input.status !== post.status) {
+    if (input.status === "published") {
+      // Publishing is only allowed via publishPost() (editor Publish button).
+    } else if (input.status === "draft" && hasPublishedVersion) {
+      // Keep post in published lists; draft edits live in current_draft_version only.
+    } else {
+      const { error: statusError } = await supabase
+        .from("posts")
+        .update({ status: input.status, updated_by: userId })
+        .eq("id", input.postId);
+
+      if (statusError) {
+        return { success: false, error: statusError.message };
+      }
+
+      nextStatus = input.status;
+    }
+  }
+
+  const hasUnpublishedChanges = await resolveHasUnpublishedChanges(
+    supabase,
+    post.published_version_id,
+    {
+      title,
+      content: input.content,
+      seo_snapshot: draftSnapshot,
+    },
+  );
+
+  return {
+    success: true,
+    data: {
+      savedAt: new Date().toISOString(),
+      status: nextStatus,
+      slug: nextSlug,
+      hasUnpublishedChanges,
+    },
+  };
 }
 
 /**
@@ -326,16 +547,16 @@ export async function publishPost(
 
   const supabase = await createClient();
 
-  const { data: post, error: postError } = await supabase
-    .from("posts")
-    .select(POST_SELECT)
-    .eq("id", postId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
+  const postLookup = await fetchPostRow(supabase, POST_SELECT, {
+    postId,
+    workspaceId,
+  });
 
-  if (postError || !post?.current_draft_version_id) {
+  if (postLookup.error || !postLookup.data?.current_draft_version_id) {
     return { success: false, error: "Post not found.", code: "not_found" };
   }
+
+  const post = postLookup.data;
 
   const { data: draft, error: draftError } = await supabase
     .from("post_versions")
@@ -378,18 +599,45 @@ export async function publishPost(
     return { success: false, error: publishError?.message ?? "Publish failed." };
   }
 
-  const { error: updateError } = await supabase
-    .from("posts")
-    .update({
-      status: "published",
-      published_at: now,
-      published_version_id: publishedVersion.id,
-      updated_by: userId,
-    })
-    .eq("id", postId);
+  const snapshot = (draft.seo_snapshot ?? {}) as Record<string, unknown>;
+  const display = parseDisplaySnapshot(snapshot);
+  const seo = parseSeoSnapshot(snapshot);
+  const nextSlug = parseDraftSlugFromSnapshot(snapshot);
+
+  const liveUpdate: Record<string, unknown> = {
+    status: "published",
+    published_at: now,
+    published_version_id: publishedVersion.id,
+    updated_by: userId,
+    title: draft.title,
+    description: display.description ?? null,
+    author_name: display.authorName ?? null,
+    author_avatar_id: display.authorAvatarId ?? null,
+    seo_title: seo.seoTitle ?? null,
+    seo_description: seo.seoDescription ?? null,
+    seo_canonical: seo.seoCanonical ?? null,
+    seo_keywords: seo.seoKeywords ?? [],
+    og_image_id: seo.ogImageId ?? null,
+    use_post_description_for_seo: seo.usePostDescriptionForSeo ?? false,
+  };
+
+  if (nextSlug) {
+    const slugTaken = await findPostSlugConflict(
+      supabase,
+      nextSlug,
+      workspaceId,
+      post.site_id ?? null,
+      postId,
+    );
+    if (!slugTaken) {
+      liveUpdate.slug = nextSlug;
+    }
+  }
+
+  const { error: updateError } = await updatePostRow(supabase, postId, liveUpdate);
 
   if (updateError) {
-    return { success: false, error: updateError.message };
+    return { success: false, error: updateError };
   }
 
   await syncPostBlocks(postId, publishedVersion.id, draft.content as TiptapContent);
@@ -449,21 +697,17 @@ export async function revertToVersion(
   }
 
   const snapshot = (source.seo_snapshot ?? {}) as Record<string, unknown>;
+  const display = parseDisplaySnapshot(snapshot);
 
-  await supabase
-    .from("posts")
-    .update({
-      title: source.title,
-      seo_title: (snapshot.seoTitle as string | null) ?? null,
-      seo_description: (snapshot.seoDescription as string | null) ?? null,
-      seo_canonical: (snapshot.seoCanonical as string | null) ?? null,
-      seo_keywords: (snapshot.seoKeywords as string[]) ?? [],
-      og_image_id: (snapshot.ogImageId as string | null) ?? null,
-      updated_by: userId,
-    })
-    .eq("id", postId);
+  await supabase.from("posts").update({ updated_by: userId }).eq("id", postId);
 
   await syncPostBlocks(postId, post.current_draft_version_id, source.content as TiptapContent);
+
+  const authorAvatarUrl = display.authorAvatarId
+    ? ((await getMediaById(display.authorAvatarId))?.publicUrl ?? null)
+    : null;
+
+  const profileAvatarUrl = await getProfileAvatarUrlByUserId(userId);
 
   return {
     success: true,
@@ -471,6 +715,12 @@ export async function revertToVersion(
       content: source.content as TiptapContent,
       title: source.title,
       seo: parseSeoSnapshot(snapshot),
+      display,
+      authorAvatarUrl: resolvePostAuthorAvatarUrl({
+        authorName: display.authorName,
+        customAvatarUrl: authorAvatarUrl,
+        profileAvatarUrl,
+      }),
     },
   };
 }
@@ -542,17 +792,17 @@ export async function getPublishedPostBySlug(
     return getPublishedPostForSite(defaultSite.id, postSlug);
   }
 
-  const { data: postRow, error } = await supabase
-    .from("posts")
-    .select(`${POST_SELECT}, media_files:og_image_id ( public_url )`)
-    .eq("workspace_id", workspace.id)
-    .eq("slug", postSlug)
-    .eq("status", "published")
-    .maybeSingle();
+  const postLookup = await fetchPostRow(supabase, POST_SELECT, {
+    workspaceId: workspace.id,
+    slug: postSlug,
+    status: "published",
+  });
 
-  if (error || !postRow || !postRow.published_version_id) {
+  if (postLookup.error || !postLookup.data?.published_version_id) {
     return null;
   }
+
+  const postRow = postLookup.data;
 
   const { data: versionRow } = await supabase
     .from("post_versions")
@@ -562,42 +812,91 @@ export async function getPublishedPostBySlug(
 
   if (!versionRow) return null;
 
-  const post = mapPostRow(postRow);
-  const ogJoin = postRow.media_files as { public_url: string } | { public_url: string }[] | null;
-  const ogImageUrl = Array.isArray(ogJoin) ? (ogJoin[0]?.public_url ?? null) : (ogJoin?.public_url ?? null);
-
-  return {
-    ...post,
-    content: versionRow.content as TiptapContent,
-    ogImageUrl,
-  };
+  return resolvePublishedPost(postRow, versionRow);
 }
 
 /**
  * Lists published posts for a site's public blog index.
  */
-export async function listPublishedPostsForSite(siteId: string): Promise<PostSummary[]> {
+export async function listPublishedPostsForSite(siteId: string): Promise<BlogPostListItem[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("posts")
-    .select("id, slug, title, status, published_at, updated_at, created_at, site_id")
+    .select(
+      `
+      id,
+      slug,
+      title,
+      status,
+      published_at,
+      updated_at,
+      created_at,
+      site_id,
+      created_by,
+      published_version:post_versions!posts_published_version_id_fkey (
+        content,
+        seo_snapshot
+      )
+    `,
+    )
     .eq("site_id", siteId)
     .eq("status", "published")
+    .not("published_version_id", "is", null)
     .order("published_at", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    title: row.title,
-    status: row.status as PostSummary["status"],
-    publishedAt: row.published_at,
-    updatedAt: row.updated_at,
-    createdAt: row.created_at,
-    siteId: row.site_id,
-  }));
+  const siteSlugs = await getSitePublicSlugs(siteId);
+  const proxiedAvatarUrlByUserId = new Map<string, string | null>();
+
+  return Promise.all(
+    (data ?? []).map(async (row) => {
+      const versionRow = Array.isArray(row.published_version)
+        ? row.published_version[0]
+        : row.published_version;
+      const snapshot = (versionRow?.seo_snapshot ?? {}) as Record<string, unknown>;
+      const display = parseDisplaySnapshot(snapshot);
+      const content = versionRow?.content;
+      const authorName = display.authorName?.trim() || null;
+
+      const authorMedia =
+        display.authorAvatarId ? await getMediaById(display.authorAvatarId) : null;
+
+      let profileAvatarUrl: string | null = null;
+      if (isPostAuthorProfile(authorName) && siteSlugs) {
+        const cached = proxiedAvatarUrlByUserId.get(row.created_by);
+        if (cached !== undefined) {
+          profileAvatarUrl = cached;
+        } else {
+          profileAvatarUrl = await resolveProxiedAuthorAvatarUrl({
+            siteSlugs,
+            userId: row.created_by,
+          });
+          proxiedAvatarUrlByUserId.set(row.created_by, profileAvatarUrl);
+        }
+      }
+
+      return {
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        status: row.status as BlogPostListItem["status"],
+        publishedAt: row.published_at,
+        updatedAt: row.updated_at,
+        createdAt: row.created_at,
+        siteId: row.site_id,
+        summary: display.description?.trim() || null,
+        authorName,
+        authorAvatarUrl: resolvePostAuthorAvatarUrl({
+          authorName,
+          customAvatarUrl: authorMedia?.publicUrl ?? null,
+          profileAvatarUrl,
+        }),
+        coverImageUrl: resolvePostCoverImageUrl({ content }),
+      };
+    }),
+  );
 }
 
 /**
@@ -609,15 +908,15 @@ export async function getPublishedPostForSite(
 ): Promise<PublishedPost | null> {
   const supabase = await createClient();
 
-  const { data: postRow, error } = await supabase
-    .from("posts")
-    .select(`${POST_SELECT}, media_files:og_image_id ( public_url )`)
-    .eq("site_id", siteId)
-    .eq("slug", postSlug)
-    .eq("status", "published")
-    .maybeSingle();
+  const postLookup = await fetchPostRow(supabase, POST_SELECT, {
+    siteId,
+    slug: postSlug,
+    status: "published",
+  });
 
-  if (error || !postRow || !postRow.published_version_id) return null;
+  if (postLookup.error || !postLookup.data?.published_version_id) return null;
+
+  const postRow = postLookup.data;
 
   const { data: versionRow } = await supabase
     .from("post_versions")
@@ -627,15 +926,7 @@ export async function getPublishedPostForSite(
 
   if (!versionRow) return null;
 
-  const post = mapPostRow(postRow);
-  const ogJoin = postRow.media_files as { public_url: string } | { public_url: string }[] | null;
-  const ogImageUrl = Array.isArray(ogJoin) ? (ogJoin[0]?.public_url ?? null) : (ogJoin?.public_url ?? null);
-
-  return {
-    ...post,
-    content: versionRow.content as TiptapContent,
-    ogImageUrl,
-  };
+  return resolvePublishedPost(postRow, versionRow);
 }
 
 /**

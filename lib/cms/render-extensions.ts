@@ -53,6 +53,12 @@ export const cmsRenderExtensions = [
     underline: false,
     paragraph: false,
     heading: false,
+    bulletList: {
+      HTMLAttributes: { class: "cms-bullet-list" },
+    },
+    orderedList: {
+      HTMLAttributes: { class: "cms-ordered-list" },
+    },
   }),
   CmsParagraphBlock,
   CmsHeadingBlock,
@@ -63,8 +69,11 @@ export const cmsRenderExtensions = [
   }),
   renderImage,
   Link.configure({ openOnClick: true }),
-  TaskList,
-  TaskItem.configure({ nested: true }),
+  TaskList.configure({ HTMLAttributes: { class: "cms-task-list" } }),
+  TaskItem.configure({
+    HTMLAttributes: { class: "cms-task-item" },
+    nested: true,
+  }),
   HorizontalRule,
   Underline,
   Highlight.configure({ multicolor: true }),

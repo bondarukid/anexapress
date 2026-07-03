@@ -1,9 +1,11 @@
 "use client";
 
-import { Check, Cloud, LanguagesIcon, Loader2, Save, Upload } from "lucide-react";
+import { Check, Cloud, LanguagesIcon, Loader2, Save, Settings, Upload } from "lucide-react";
 
 import { InspectorSidebarTrigger } from "@/components/cms/editor/editor-inspector-sidebar";
 import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
+import { getPostStatusLabel, getPostStatusMeta } from "@/lib/cms/post-status";
+import type { PostStatus } from "@/types/post";
 import LanguageDropdown from "@/components/dashboard/dropdown-language";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,9 +16,9 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
  * Dashboard-style header for CMS editor routes with save/publish actions.
  */
 export function EditorSiteHeader() {
-  const { chrome } = useEditorChrome();
+  const { chrome, openSettings } = useEditorChrome();
 
-  const statusLabel = chrome.status === "published" ? "Published" : "Draft";
+  const statusMeta = getPostStatusMeta(chrome.status as PostStatus);
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -26,9 +28,14 @@ export function EditorSiteHeader() {
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="truncate text-base font-medium">{chrome.title}</h1>
-          <Badge variant={chrome.status === "published" ? "default" : "secondary"} className="shrink-0">
-            {statusLabel}
+          <Badge variant={statusMeta.badgeVariant} className="shrink-0">
+            {getPostStatusLabel(chrome.status as PostStatus)}
           </Badge>
+          {chrome.hasUnpublishedChanges ? (
+            <Badge variant="outline" className="shrink-0">
+              Unpublished changes
+            </Badge>
+          ) : null}
         </div>
 
         <div className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
@@ -90,6 +97,16 @@ export function EditorSiteHeader() {
           />
 
           <Separator orientation="vertical" className="mx-1 hidden h-4 sm:block" />
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-lg"
+            onClick={() => openSettings("general")}
+            aria-label="Post settings"
+          >
+            <Settings />
+          </Button>
 
           <InspectorSidebarTrigger className="-mr-1" />
         </div>

@@ -45,6 +45,22 @@ function resolveTextBlockFromDepth(
 }
 
 /**
+ * Returns true when the selection anchor is inside the node at `nodePos`.
+ */
+export function isAnchorWithinNode(
+  doc: ProseMirrorNode,
+  nodePos: number,
+  anchor: number,
+): boolean {
+  const node = doc.nodeAt(nodePos);
+  if (!node) {
+    return false;
+  }
+
+  return anchor >= nodePos && anchor < nodePos + node.nodeSize;
+}
+
+/**
  * Resolves the currently selected editor block for the right inspector panel.
  * Empty text cursors return null so document-level settings stay visible.
  */
@@ -66,6 +82,36 @@ export function getEditorBlockSelection(
   }
 
   return resolveTextBlockFromDepth(doc, selection.from);
+}
+
+/**
+ * Keeps an explicitly selected block active while the cursor stays inside it
+ * (for example after inspector attribute updates that collapse node selection).
+ */
+export function resolveStickyEditorBlockSelection(
+  doc: ProseMirrorNode,
+  selection: Selection,
+  current: EditorBlockSelection | null,
+): EditorBlockSelection | null {
+  const resolved = getEditorBlockSelection(doc, selection);
+  if (resolved) {
+    return resolved;
+  }
+
+  if (!current) {
+    return null;
+  }
+
+  if (!isAnchorWithinNode(doc, current.pos, selection.anchor)) {
+    return null;
+  }
+
+  const node = doc.nodeAt(current.pos);
+  if (!node) {
+    return null;
+  }
+
+  return buildBlockSelection(current.pos, node);
 }
 
 /**

@@ -5,7 +5,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { updateSiteSettingsAction } from "@/actions/site/site.actions";
+import { SiteDefaultSeoPanel } from "@/components/cms/site/site-default-seo-panel";
 import { SiteDomainsPanel } from "@/components/cms/site/site-domains-panel";
+import { SiteVerificationPanel } from "@/components/cms/site/site-verification-panel";
 import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -80,10 +82,15 @@ export function SiteSettingsForm({ site, pages, domains, workspaceId }: SiteSett
 
       <SiteDomainsPanel siteId={site.id} workspaceId={workspaceId} domains={domains} />
 
+      <SiteDefaultSeoPanel site={site} workspaceId={workspaceId} />
+
+      <SiteVerificationPanel site={site} workspaceId={workspaceId} filesHref={filesHref} />
+
       <div className="space-y-2">
         <Label>Site files</Label>
         <p className="text-muted-foreground text-xs">
-          Upload verification files (app-ads.txt, robots.txt) served from the site root.
+          Root files for robots.txt, ads.txt, search engine HTML verification, and .well-known
+          paths.
         </p>
         <Button asChild variant="outline">
           <Link href={filesHref}>Open file manager</Link>

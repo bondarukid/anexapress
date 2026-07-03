@@ -21,7 +21,7 @@ export async function getSiteBySlug(
   const { data: siteRow } = await supabase
     .from("sites")
     .select(
-      "id, workspace_id, name, slug, is_default, primary_domain, home_page_id, seo_default_title, seo_default_description, seo_default_og_image_id, created_at, updated_at",
+      "id, workspace_id, name, slug, is_default, primary_domain, home_page_id, seo_default_title, seo_default_description, seo_default_og_image_id, verification_meta_tags, created_at, updated_at",
     )
     .eq("workspace_id", workspace.id)
     .eq("slug", siteSlug)

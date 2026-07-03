@@ -76,7 +76,8 @@ export function SiteDomainsPanel({ siteId, workspaceId, domains: initialDomains 
         <Label>Custom domains</Label>
         <p className="text-muted-foreground mt-1 text-xs">
           Point a CNAME record to <strong>{platformHost}</strong>. Your site will be served on the
-          custom domain without the workspace path prefix.
+          custom domain without the workspace path prefix. Use this domain in Google Search Console
+          and Bing Webmaster Tools — not the platform dashboard URL.
         </p>
       </div>
 

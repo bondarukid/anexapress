@@ -18,6 +18,7 @@ import { EditorDocumentTitleField } from "@/components/cms/editor/editor-documen
 import { useEditorChrome } from "@/components/cms/editor/editor-chrome-context";
 import { PostEditor, type PostEditorHandle } from "@/components/cms/editor/post-editor";
 import { MediaPanel } from "@/components/cms/editor/media-panel";
+import { YoutubeEmbedDialog } from "@/components/cms/editor/youtube-embed-dialog";
 import { SeoPanel } from "@/components/cms/editor/seo-panel";
 import { VersionsPanel } from "@/components/cms/editor/versions-panel";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [versions, setVersions] = useState(initialVersions);
   const [sidebarTab, setSidebarTab] = useState<EditorSidebarTab>("content");
+  const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const [isSaving, startSave] = useTransition();
   const [isPublishing, startPublish] = useTransition();
@@ -209,6 +211,16 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
     setSidebarTab("media");
   }, []);
 
+  const handleYoutubeRequest = useCallback(() => {
+    setYoutubeDialogOpen(true);
+  }, []);
+
+  const handleInsertYoutube = useCallback((src: string) => {
+    markDirty();
+    editorRef.current?.insertYoutube(src);
+    setYoutubeDialogOpen(false);
+  }, [markDirty]);
+
   const closeHref = useMemo(() => {
     if (siteDashboard?.siteDashboardBase != null) {
       return `${siteDashboard.siteDashboardBase}/pages`;
@@ -250,7 +262,14 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
   ]);
 
   return (
-    <BlockEditorWorkspace
+    <>
+      <YoutubeEmbedDialog
+        open={youtubeDialogOpen}
+        onOpenChange={setYoutubeDialogOpen}
+        onInsert={handleInsertYoutube}
+      />
+
+      <BlockEditorWorkspace
       documentLabel="Page"
       documentSettings={
         <BlockEditorSidebar
@@ -300,10 +319,12 @@ export function SitePageEditorShell({ data, versions: initialVersions, workspace
             workspaceId={workspaceId}
             siteId={site.id}
             onImageRequest={handleImageRequest}
+            onYoutubeRequest={handleYoutubeRequest}
             className="mt-6"
           />
         </div>
       }
     />
+    </>
   );
 }

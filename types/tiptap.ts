@@ -19,5 +19,5 @@ export type TiptapContent = {
 
 export const EMPTY_TIPTAP_DOC: TiptapContent = {
   type: "doc",
-  content: [{ type: "paragraph" }],
+  content: [{ type: "paragraph", attrs: { blockTitle: "Text" } }],
 };

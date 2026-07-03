@@ -2,8 +2,105 @@
  * Published CMS body styles (task lists, embeds). Editor-only rules stay in prosemirror.css.
  */
 
-ul[data-type="taskList"] li > label {
-  margin-right: 0.2rem;
+/* Theme-aware typography — prose colors follow light/dark tokens */
+.wysiwyg.cms-content {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted-foreground);
+  --tw-prose-links: var(--primary);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--muted-foreground);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--muted-foreground);
+  --tw-prose-quote-borders: var(--border);
+  --tw-prose-captions: var(--muted-foreground);
+  --tw-prose-kbd: var(--foreground);
+  --tw-prose-kbd-shadows: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: var(--foreground);
+  --tw-prose-pre-bg: var(--muted);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+  --tw-prose-invert-body: var(--foreground);
+  --tw-prose-invert-headings: var(--foreground);
+  --tw-prose-invert-lead: var(--muted-foreground);
+  --tw-prose-invert-links: var(--primary);
+  --tw-prose-invert-bold: var(--foreground);
+  --tw-prose-invert-counters: var(--muted-foreground);
+  --tw-prose-invert-bullets: var(--muted-foreground);
+  --tw-prose-invert-hr: var(--border);
+  --tw-prose-invert-quotes: var(--muted-foreground);
+  --tw-prose-invert-quote-borders: var(--border);
+  --tw-prose-invert-captions: var(--muted-foreground);
+  --tw-prose-invert-kbd: var(--foreground);
+  --tw-prose-invert-kbd-shadows: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --tw-prose-invert-code: var(--foreground);
+  --tw-prose-invert-pre-code: var(--foreground);
+  --tw-prose-invert-pre-bg: var(--muted);
+  --tw-prose-invert-th-borders: var(--border);
+  --tw-prose-invert-td-borders: var(--border);
+  color: var(--foreground);
+}
+
+.cms-content ul.cms-bullet-list,
+.cms-content ol.cms-ordered-list {
+  margin: 0.75rem 0;
+  padding-left: 1.625rem;
+}
+
+.cms-content ul.cms-bullet-list {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.cms-content ol.cms-ordered-list {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.cms-content ul.cms-bullet-list > li,
+.cms-content ol.cms-ordered-list > li {
+  margin: 0.375rem 0;
+  padding-left: 0.25rem;
+}
+
+.cms-content ul.cms-bullet-list > li > p,
+.cms-content ol.cms-ordered-list > li > p {
+  margin: 0;
+}
+
+.cms-content ul.cms-task-list,
+.cms-content ul[data-type="taskList"] {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.cms-content ul.cms-task-list > li,
+.cms-content ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 0.375rem 0;
+}
+
+.cms-content ul.cms-task-list > li > div,
+.cms-content ul[data-type="taskList"] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.cms-content ul.cms-task-list > li > div > p,
+.cms-content ul[data-type="taskList"] > li > div > p {
+  margin: 0;
+}
+
+ul[data-type="taskList"] li > label,
+.cms-content ul.cms-task-list li > label {
+  flex-shrink: 0;
+  margin-right: 0;
+  margin-top: 0.125rem;
   user-select: none;
 }
 
@@ -16,7 +113,7 @@ ul[data-type="taskList"] li > label input[type="checkbox"] {
   width: 1.2em;
   height: 1.2em;
   position: relative;
-  top: 5px;
+  top: 0;
   border: 2px solid var(--border);
   margin-right: 0.3rem;
   display: grid;
@@ -161,4 +258,14 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
   background-color: color-mix(in oklch, var(--warning) 15%, transparent);
   border-radius: 0.375rem;
   padding: 0.5rem 0.75rem;
+}
+
+/* Legacy pasted highlight colors — only theme tokens are kept in content */
+.cms-content mark[style]:not([style*="var(--novel-highlight-"]) {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.cms-content span[style*="color:"] {
+  color: inherit !important;
 }

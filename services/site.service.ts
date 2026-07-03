@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/server";
 import { mapSiteRow } from "@/lib/cms/site-mappers";
+import { buildVerificationMetaTags } from "@/lib/cms/parse-verification-meta";
 import { ENABLE_MULTI_SITE } from "@/lib/config/feature-flags";
 import { resolveWorkspaceByIdForUser } from "@/lib/workspace-family/resolve";
 import { PERM_CONTENT_CREATE } from "@/lib/team/permissions";
@@ -9,7 +10,7 @@ import type { Site, SiteActionResult, SiteSummary } from "@/types/site";
 import { DEFAULT_FOOTER_CONFIG, DEFAULT_HEADER_CONFIG } from "@/schemas/site-layout.schema";
 
 const SITE_SELECT =
-  "id, workspace_id, name, slug, is_default, primary_domain, home_page_id, seo_default_title, seo_default_description, seo_default_og_image_id, created_at, updated_at";
+  "id, workspace_id, name, slug, is_default, primary_domain, home_page_id, seo_default_title, seo_default_description, seo_default_og_image_id, verification_meta_tags, created_at, updated_at";
 
 export async function listSites(workspaceId: string): Promise<SiteSummary[]> {
   const supabase = await createClient();
@@ -213,6 +214,24 @@ export async function updateSiteSettings(
   if (input.seoDefaultTitle !== undefined) update.seo_default_title = input.seoDefaultTitle;
   if (input.seoDefaultDescription !== undefined) {
     update.seo_default_description = input.seoDefaultDescription;
+  }
+
+  if (input.verificationMetaTags !== undefined) {
+    update.verification_meta_tags = input.verificationMetaTags;
+  } else if (
+    input.googleVerificationInput !== undefined ||
+    input.bingVerificationInput !== undefined
+  ) {
+    const existingSite = await getSiteById(input.workspaceId, input.siteId);
+    update.verification_meta_tags = buildVerificationMetaTags({
+      googleInput: input.googleVerificationInput,
+      bingInput: input.bingVerificationInput,
+      existing: existingSite?.verificationMetaTags,
+    });
+  }
+
+  if (Object.keys(update).length === 0) {
+    return { success: true };
   }
 
   const { error } = await supabase

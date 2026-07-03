@@ -11,7 +11,13 @@ import {
 } from "@/components/cms/editor/inspector/inspector-select-field";
 import { useEditorInspector } from "@/components/cms/editor/editor-inspector-context";
 import { Input } from "@/components/ui/input";
-import { getEditorBlockName, setEditorBlockName } from "@/lib/cms/editor-block-name";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  getEditorBlockContent,
+  setEditorBlockContent,
+} from "@/lib/cms/editor-block-content";
+import { getEditorBlockTitle } from "@/lib/cms/editor-block-title";
 import {
   BLOCK_BACKGROUND_OPTIONS,
   BLOCK_INDENT_OPTIONS,
@@ -64,8 +70,8 @@ function hasField(fields: TextBlockInspectorField[], field: TextBlockInspectorFi
 export function TextBlockInspectorPanel({ block }: TextBlockInspectorPanelProps) {
   const { editor } = useEditorInspector();
   const revision = useEditorRevision(editor);
-  const [blockName, setBlockName] = useState("");
-  const isEditingNameRef = useRef(false);
+  const [blockContent, setBlockContent] = useState("");
+  const isEditingContentRef = useRef(false);
 
   const availableFields = useMemo(
     () => getAvailableInspectorFields(block.type),
@@ -81,9 +87,15 @@ export function TextBlockInspectorPanel({ block }: TextBlockInspectorPanelProps)
     return getTextBlockSettings(editor.state.doc, block.pos);
   }, [block.pos, editor, revision]);
 
+  const blockTitle = useMemo(() => {
+    if (!editor) return "";
+    void revision;
+    return getEditorBlockTitle(editor.state.doc, block.pos);
+  }, [block.pos, editor, revision]);
+
   useEffect(() => {
-    if (!editor || isEditingNameRef.current) return;
-    setBlockName(getEditorBlockName(editor.state.doc, block.pos));
+    if (!editor || isEditingContentRef.current) return;
+    setBlockContent(getEditorBlockContent(editor.state.doc, block.pos));
   }, [block.pos, editor, revision]);
 
   if (!editor || !settings) {
@@ -98,41 +110,44 @@ export function TextBlockInspectorPanel({ block }: TextBlockInspectorPanelProps)
     updateTextBlockSettings(editor, block.pos, patch);
   };
 
-  const applyBlockName = () => {
-    const trimmed = blockName.trim();
-    const current = getEditorBlockName(editor.state.doc, block.pos);
-
-    if (trimmed === current) {
+  const applyBlockContent = () => {
+    const current = getEditorBlockContent(editor.state.doc, block.pos);
+    if (blockContent === current) {
       return;
     }
 
-    setEditorBlockName(editor, block.pos, trimmed);
+    setEditorBlockContent(editor, block.pos, blockContent);
   };
 
   return (
     <div className="space-y-3 px-1 py-1 pb-4">
       <InspectorSection
-        title="Block name"
-        help="The label shown in the block outline and the main text content of this block. Changing it updates the text inside the block."
+        title="Block"
+        help="Block title is the type label (Heading 1, Text). Content is the text readers see inside the block."
       >
-        <Input
-          value={blockName}
-          onChange={(event) => setBlockName(event.target.value)}
-          onFocus={() => {
-            isEditingNameRef.current = true;
-          }}
-          onBlur={() => {
-            isEditingNameRef.current = false;
-            applyBlockName();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              event.currentTarget.blur();
-            }
-          }}
-          placeholder="Enter block name"
-        />
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="block-title">Block title</Label>
+            <Input id="block-title" value={blockTitle} readOnly className="bg-muted/40" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="block-content">Content</Label>
+            <Textarea
+              id="block-content"
+              value={blockContent}
+              onChange={(event) => setBlockContent(event.target.value)}
+              onFocus={() => {
+                isEditingContentRef.current = true;
+              }}
+              onBlur={() => {
+                isEditingContentRef.current = false;
+                applyBlockContent();
+              }}
+              rows={4}
+              placeholder="Block text content"
+            />
+          </div>
+        </div>
       </InspectorSection>
 
       {(hasField(availableFields, "variant") ||

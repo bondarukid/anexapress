@@ -19,6 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Code,
+  Copy,
   GripVertical,
   Heading1,
   Image as ImageIcon,
@@ -26,16 +27,23 @@ import {
   Minus,
   Quote,
   Text,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useEditor } from "novel";
 
+import { Button } from "@/components/ui/button";
 import {
   getActiveTopLevelBlockPos,
   getTopLevelEditorBlocks,
   type EditorBlockTreeItem,
 } from "@/lib/cms/editor-block-tree";
-import { moveTopLevelEditorBlock, selectEditorBlockAtPos } from "@/lib/cms/move-editor-block";
+import {
+  deleteEditorBlockAtPos,
+  duplicateEditorBlockAtPos,
+  moveTopLevelEditorBlock,
+  selectEditorBlockAtPos,
+} from "@/lib/cms/move-editor-block";
 import { cn } from "@/lib/utils";
 
 function BlockTypeIcon({ type }: { type: string }) {
@@ -64,13 +72,77 @@ function BlockTypeIcon({ type }: { type: string }) {
   }
 }
 
+type BlockRowActionsProps = {
+  onDuplicate: () => void;
+  onDelete: () => void;
+};
+
+function BlockRowActions({ onDuplicate, onDelete }: BlockRowActionsProps) {
+  return (
+    <div className="flex shrink-0 items-center">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground size-7"
+        aria-label="Duplicate block"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDuplicate();
+        }}
+      >
+        <Copy className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-destructive size-7"
+        aria-label="Delete block"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+type BlockOutlineChildRowProps = {
+  item: EditorBlockTreeItem;
+  onSelect: (pos: number) => void;
+};
+
+function BlockOutlineChildRow({ item, onSelect }: BlockOutlineChildRowProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.pos)}
+      className="hover:bg-accent flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs"
+    >
+      <BlockTypeIcon type={item.type} />
+      <span className="truncate">{item.label}</span>
+    </button>
+  );
+}
+
 type SortableBlockRowProps = {
   item: EditorBlockTreeItem;
   isActive: boolean;
   onSelect: (pos: number) => void;
+  onDuplicate: (pos: number) => void;
+  onDelete: (pos: number) => void;
 };
 
-function SortableBlockRow({ item, isActive, onSelect }: SortableBlockRowProps) {
+function SortableBlockRow({
+  item,
+  isActive,
+  onSelect,
+  onDuplicate,
+  onDelete,
+}: SortableBlockRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   });
@@ -82,36 +154,36 @@ function SortableBlockRow({ item, isActive, onSelect }: SortableBlockRowProps) {
 
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-60")}>
-      <button
-        type="button"
-        onClick={() => onSelect(item.pos)}
-        className={cn(
-          "hover:bg-accent flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm",
-          isActive && "bg-accent",
-        )}
-      >
-        <span
-          className="text-muted-foreground hover:text-foreground cursor-grab touch-none active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
+      <div className="group flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onSelect(item.pos)}
+          className={cn(
+            "hover:bg-accent flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm",
+            isActive && "bg-accent",
+          )}
         >
-          <GripVertical className="size-3.5" />
-        </span>
-        <BlockTypeIcon type={item.type} />
-        <span className="truncate">{item.label}</span>
-      </button>
+          <span
+            className="text-muted-foreground hover:text-foreground cursor-grab touch-none active:cursor-grabbing"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-3.5" />
+          </span>
+          <BlockTypeIcon type={item.type} />
+          <span className="truncate">{item.label}</span>
+        </button>
+        <BlockRowActions
+          onDuplicate={() => onDuplicate(item.pos)}
+          onDelete={() => onDelete(item.pos)}
+        />
+      </div>
       {item.children.length > 0 ? (
         <div className="border-border ml-4 border-l pl-2">
           {item.children.map((child) => (
-            <button
-              key={child.id}
-              type="button"
-              onClick={() => onSelect(child.pos)}
-              className="hover:bg-accent flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs"
-            >
-              <BlockTypeIcon type={child.type} />
-              <span className="truncate">{child.label}</span>
-            </button>
+            <BlockOutlineChildRow key={child.id} item={child} onSelect={onSelect} />
           ))}
         </div>
       ) : null}
@@ -172,6 +244,18 @@ export function BlockOutlinePanel() {
     refresh();
   };
 
+  const handleDuplicate = (pos: number) => {
+    if (!editor) return;
+    duplicateEditorBlockAtPos(editor, pos);
+    refresh();
+  };
+
+  const handleDelete = (pos: number) => {
+    if (!editor) return;
+    deleteEditorBlockAtPos(editor, pos);
+    refresh();
+  };
+
   if (!editor) {
     return <p className="text-muted-foreground px-2 text-xs">Loading editor…</p>;
   }
@@ -190,6 +274,8 @@ export function BlockOutlinePanel() {
               item={block}
               isActive={activePos === block.pos}
               onSelect={handleSelect}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
             />
           ))}
         </div>

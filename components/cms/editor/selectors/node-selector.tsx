@@ -16,6 +16,7 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { resolveHeadingBlockTitle, resolveParagraphBlockTitle } from "@/lib/cms/editor-block-title";
 import { cn } from "@/lib/utils";
 
 type NodeItem = {
@@ -43,28 +44,54 @@ export function NodeSelector() {
           !instance.isActive("bulletList") &&
           !instance.isActive("orderedList") &&
           !instance.isActive("taskList"),
-        command: (instance) => instance.chain().focus().setParagraph().run(),
+        command: (instance) =>
+          instance
+            .chain()
+            .focus()
+            .setParagraph()
+            .updateAttributes("paragraph", {
+              blockTitle: resolveParagraphBlockTitle("paragraph"),
+            })
+            .run(),
       },
       {
         name: "Heading 1",
         label: "Heading 1",
         icon: <Heading1 size={16} />,
         isActive: (instance) => instance.isActive("heading", { level: 1 }),
-        command: (instance) => instance.chain().focus().toggleHeading({ level: 1 }).run(),
+        command: (instance) =>
+          instance
+            .chain()
+            .focus()
+            .toggleHeading({ level: 1 })
+            .updateAttributes("heading", { blockTitle: resolveHeadingBlockTitle(1) })
+            .run(),
       },
       {
         name: "Heading 2",
         label: "Heading 2",
         icon: <Heading2 size={16} />,
         isActive: (instance) => instance.isActive("heading", { level: 2 }),
-        command: (instance) => instance.chain().focus().toggleHeading({ level: 2 }).run(),
+        command: (instance) =>
+          instance
+            .chain()
+            .focus()
+            .toggleHeading({ level: 2 })
+            .updateAttributes("heading", { blockTitle: resolveHeadingBlockTitle(2) })
+            .run(),
       },
       {
         name: "Heading 3",
         label: "Heading 3",
         icon: <Heading3 size={16} />,
         isActive: (instance) => instance.isActive("heading", { level: 3 }),
-        command: (instance) => instance.chain().focus().toggleHeading({ level: 3 }).run(),
+        command: (instance) =>
+          instance
+            .chain()
+            .focus()
+            .toggleHeading({ level: 3 })
+            .updateAttributes("heading", { blockTitle: resolveHeadingBlockTitle(3) })
+            .run(),
       },
       {
         name: "Bullet List",

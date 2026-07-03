@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
  * Uses the `wysiwyg` typography plugin configured in globals.css.
  */
 export const cmsContentTypographyClass =
-  "wysiwyg prose prose-neutral dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:scroll-mt-20";
+  "wysiwyg max-w-none wysiwyg-p:leading-relaxed wysiwyg-headings:scroll-mt-20 text-foreground";
 
 export function cmsContentTypographyClassName(className?: string): string {
   return cn(cmsContentTypographyClass, className);

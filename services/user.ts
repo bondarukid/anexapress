@@ -92,6 +92,26 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
   return mapProfileRow(user, profile as ProfileRow);
 }
 
+/**
+ * Returns a user's public profile avatar URL for server-side post author resolution.
+ * Uses the service role because public blog pages are unauthenticated.
+ */
+export async function getProfileAvatarUrlByUserId(userId: string): Promise<string | null> {
+  try {
+    const adminClient = await createAdminClient();
+    const { data, error } = await adminClient
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !data?.avatar_url) return null;
+    return data.avatar_url;
+  } catch {
+    return null;
+  }
+}
+
 type EnsureUserProfileHint = {
   firstName?: string;
   lastName?: string;

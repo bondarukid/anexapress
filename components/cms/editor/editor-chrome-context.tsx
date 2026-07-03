@@ -17,6 +17,7 @@ type EditorChromeData = {
   isSaving: boolean;
   isPublishing: boolean;
   canPublish: boolean;
+  hasUnpublishedChanges: boolean;
   closeHref: string;
   closeLabel: string;
 };
@@ -35,6 +36,7 @@ const DEFAULT_CHROME_DATA: EditorChromeData = {
   isSaving: false,
   isPublishing: false,
   canPublish: false,
+  hasUnpublishedChanges: false,
   closeHref: "/",
   closeLabel: "Back",
 };
@@ -45,12 +47,19 @@ const DEFAULT_CHROME: EditorChromeState = {
   onPublish: () => undefined,
 };
 
+export const DEFAULT_SETTINGS_SECTION = "general";
+
 type EditorChromeContextValue = {
   chrome: EditorChromeState;
   setChrome: (patch: Partial<EditorChromeState>) => void;
   inspectorOpen: boolean;
   setInspectorOpen: (open: boolean) => void;
   toggleInspector: () => void;
+  settingsOpen: boolean;
+  settingsSection: string;
+  setSettingsOpen: (open: boolean) => void;
+  setSettingsSection: (sectionId: string) => void;
+  openSettings: (section?: string) => void;
 };
 
 const EditorChromeContext = createContext<EditorChromeContextValue | null>(null);
@@ -63,6 +72,7 @@ function chromeDataEqual(left: EditorChromeData, right: EditorChromeData): boole
     left.isSaving === right.isSaving &&
     left.isPublishing === right.isPublishing &&
     left.canPublish === right.canPublish &&
+    left.hasUnpublishedChanges === right.hasUnpublishedChanges &&
     left.closeHref === right.closeHref &&
     left.closeLabel === right.closeLabel
   );
@@ -75,6 +85,8 @@ function chromeDataEqual(left: EditorChromeData, right: EditorChromeData): boole
 export function EditorChromeProvider({ children }: { children: ReactNode }) {
   const [chromeData, setChromeData] = useState<EditorChromeData>(DEFAULT_CHROME_DATA);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState(DEFAULT_SETTINGS_SECTION);
 
   const actionsRef = useRef<EditorChromeActions>({
     onSaveVersion: () => undefined,
@@ -108,6 +120,9 @@ export function EditorChromeProvider({ children }: { children: ReactNode }) {
     if (patch.isSaving !== undefined) dataPatch.isSaving = patch.isSaving;
     if (patch.isPublishing !== undefined) dataPatch.isPublishing = patch.isPublishing;
     if (patch.canPublish !== undefined) dataPatch.canPublish = patch.canPublish;
+    if (patch.hasUnpublishedChanges !== undefined) {
+      dataPatch.hasUnpublishedChanges = patch.hasUnpublishedChanges;
+    }
     if (patch.closeHref !== undefined) dataPatch.closeHref = patch.closeHref;
     if (patch.closeLabel !== undefined) dataPatch.closeLabel = patch.closeLabel;
 
@@ -133,6 +148,13 @@ export function EditorChromeProvider({ children }: { children: ReactNode }) {
     setInspectorOpen((current) => !current);
   }, []);
 
+  const openSettings = useCallback((section?: string) => {
+    if (section) {
+      setSettingsSection(section);
+    }
+    setSettingsOpen(true);
+  }, []);
+
   const value = useMemo(
     () => ({
       chrome,
@@ -140,8 +162,21 @@ export function EditorChromeProvider({ children }: { children: ReactNode }) {
       inspectorOpen,
       setInspectorOpen,
       toggleInspector,
+      settingsOpen,
+      settingsSection,
+      setSettingsOpen,
+      setSettingsSection,
+      openSettings,
     }),
-    [chrome, inspectorOpen, setChrome, toggleInspector],
+    [
+      chrome,
+      inspectorOpen,
+      openSettings,
+      setChrome,
+      settingsOpen,
+      settingsSection,
+      toggleInspector,
+    ],
   );
 
   return <EditorChromeContext.Provider value={value}>{children}</EditorChromeContext.Provider>;
@@ -156,6 +191,11 @@ export function useEditorChrome(): EditorChromeContextValue {
       inspectorOpen: true,
       setInspectorOpen: () => undefined,
       toggleInspector: () => undefined,
+      settingsOpen: false,
+      settingsSection: DEFAULT_SETTINGS_SECTION,
+      setSettingsOpen: () => undefined,
+      setSettingsSection: () => undefined,
+      openSettings: () => undefined,
     };
   }
   return context;

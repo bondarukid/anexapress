@@ -325,6 +325,24 @@ export function FileManagerUploadSheet({
               >
                 app-ads.txt preset
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSheetBusy}
+                onClick={() => toast.info("Upload the google*.html file from Search Console")}
+              >
+                Google verification HTML
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSheetBusy}
+                onClick={() => toast.info("Upload BingSiteAuth.xml from Bing Webmaster Tools")}
+              >
+                Bing verification file
+              </Button>
             </div>
             <SheetClose asChild>
               <Button type="button" variant="secondary" disabled={isSheetBusy}>

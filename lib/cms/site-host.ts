@@ -13,7 +13,7 @@ type CacheEntry = {
 const domainCache = new Map<string, CacheEntry>();
 
 const ROOT_FILE_PATTERN =
-  /^\/(\.well-known\/[^/]+(?:\/[^/]+)*|app-ads\.txt|ads\.txt|robots\.txt|sitemap\.xml)$/i;
+  /^\/(\.well-known\/[^/]+(?:\/[^/]+)*|app-ads\.txt|ads\.txt|robots\.txt|sitemap\.xml|google[a-z0-9]+\.html|BingSiteAuth\.xml)$/i;
 
 /** Strip port and lowercase hostname. */
 export function normalizeHostname(host: string): string {

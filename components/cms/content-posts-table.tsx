@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { FileText, Plus } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { canCreateContent } from "@/lib/team/permissions";
 import { useOptionalSiteDashboard } from "@/components/providers/site-dashboard-provider";
 import { workspacePathFromSummary } from "@/lib/routing/workspace-paths";
 import { Badge } from "@/components/ui/badge";
+import { CreatePostDialog } from "@/components/cms/create-post-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,11 +39,7 @@ type ContentPostsTableProps = {
   lockSiteFilter?: boolean;
 };
 
-const statusVariant: Record<PostSummary["status"], "default" | "secondary" | "outline"> = {
-  draft: "secondary",
-  published: "default",
-  archived: "outline",
-};
+import { getPostStatusLabel, POST_STATUS_META } from "@/lib/cms/post-status";
 
 export function ContentPostsTable({
   posts,
@@ -54,16 +51,13 @@ export function ContentPostsTable({
   const siteDashboard = useOptionalSiteDashboard();
   const canCreate = canCreateContent(workspaceAccess);
   const router = useRouter();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   if (!activeWorkspace) {
     return null;
   }
 
-  const siteQuery = selectedSiteId ? `?site=${selectedSiteId}` : "";
-  const newPostHref =
-    lockSiteFilter && siteDashboard
-      ? `${siteDashboard.siteDashboardBase}/content/new`
-      : workspacePathFromSummary(activeWorkspace, `/content/new${siteQuery}`);
+  const createSiteId = selectedSiteId ?? sites[0]?.id;
 
   const handleSiteChange = (siteId: string) => {
     if (lockSiteFilter) return;
@@ -95,24 +89,32 @@ export function ContentPostsTable({
               </Select>
             </div>
           ) : null}
-          {canCreate ? (
-            <Button asChild>
-              <Link href={newPostHref}>
-                <Plus className="mr-2 size-4" />
-                New post
-              </Link>
+          {canCreate && createSiteId ? (
+            <Button type="button" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              New post
             </Button>
           ) : null}
         </div>
       </div>
 
+      {canCreate && createSiteId ? (
+        <CreatePostDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          workspace={activeWorkspace}
+          siteId={createSiteId}
+          sites={sites}
+        />
+      ) : null}
+
       {posts.length === 0 ? (
         <div className="border-border flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16">
           <FileText className="text-muted-foreground size-10" />
           <p className="text-muted-foreground text-sm">No posts yet for this site.</p>
-          {canCreate ? (
-            <Button asChild variant="outline">
-              <Link href={newPostHref}>Create your first post</Link>
+          {canCreate && createSiteId ? (
+            <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(true)}>
+              Create your first post
             </Button>
           ) : null}
         </div>
@@ -133,7 +135,9 @@ export function ContentPostsTable({
                 <TableCell className="font-medium">{post.title}</TableCell>
                 <TableCell className="text-muted-foreground">{post.slug}</TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant[post.status]}>{post.status}</Badge>
+                  <Badge variant={POST_STATUS_META[post.status].badgeVariant}>
+                    {getPostStatusLabel(post.status)}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {formatDistanceToNow(new Date(post.updatedAt), { addSuffix: true })}

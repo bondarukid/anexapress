@@ -224,5 +224,5 @@ export function updateTextBlockSettings(
     return;
   }
 
-  editor.chain().focus().setNodeSelection(pos).updateAttributes(node.type.name, attrs).run();
+  editor.chain().setNodeSelection(pos).updateAttributes(node.type.name, attrs).run();
 }

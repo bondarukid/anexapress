@@ -4,6 +4,14 @@ import { workspaceSlugRegex } from "@/schemas/workspace.schema";
 import { seoFieldsSchema } from "@/schemas/seo.schema";
 import { tiptapContentSchema } from "@/schemas/tiptap-content.schema";
 
+export const siteVerificationProviderSchema = z.enum(["google", "bing", "other"]);
+
+export const siteVerificationMetaTagSchema = z.object({
+  provider: siteVerificationProviderSchema,
+  name: z.string().min(1).max(120),
+  content: z.string().min(1).max(200),
+});
+
 export const siteSlugSchema = z
   .string()
   .min(2)
@@ -30,6 +38,9 @@ export const updateSiteSettingsSchema = z.object({
   homePageId: z.string().uuid().nullable().optional(),
   seoDefaultTitle: z.string().max(120).nullable().optional(),
   seoDefaultDescription: z.string().max(320).nullable().optional(),
+  verificationMetaTags: z.array(siteVerificationMetaTagSchema).max(10).optional(),
+  googleVerificationInput: z.string().max(500).nullable().optional(),
+  bingVerificationInput: z.string().max(500).nullable().optional(),
 });
 
 export const createSitePageSchema = z.object({

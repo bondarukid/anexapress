@@ -16,6 +16,7 @@ import type { EditorBlockSelection } from "@/lib/cms/editor-selection";
 
 type EditorInspectorContextValue = {
   documentLabel: string;
+  hasDocumentSettings: boolean;
   editor: CmsEditorInstance | null;
   selectedBlock: EditorBlockSelection | null;
   setEditor: (editor: CmsEditorInstance | null) => void;
@@ -28,6 +29,7 @@ const EditorInspectorContext = createContext<EditorInspectorContextValue | null>
 type EditorInspectorProviderProps = {
   children: ReactNode;
   documentLabel?: string;
+  hasDocumentSettings?: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ type EditorInspectorProviderProps = {
 export function EditorInspectorProvider({
   children,
   documentLabel = "Document",
+  hasDocumentSettings = true,
 }: EditorInspectorProviderProps) {
   const [selectedBlock, setSelectedBlock] = useState<EditorBlockSelection | null>(null);
   const [editor, setEditor] = useState<CmsEditorInstance | null>(null);
@@ -47,13 +50,14 @@ export function EditorInspectorProvider({
   const value = useMemo(
     () => ({
       documentLabel,
+      hasDocumentSettings,
       editor,
       selectedBlock,
       setEditor,
       setSelectedBlock,
       clearSelectedBlock,
     }),
-    [clearSelectedBlock, documentLabel, editor, selectedBlock],
+    [clearSelectedBlock, documentLabel, editor, hasDocumentSettings, selectedBlock],
   );
 
   return (
@@ -66,6 +70,7 @@ export function useEditorInspector(): EditorInspectorContextValue {
   if (!context) {
     return {
       documentLabel: "Document",
+      hasDocumentSettings: true,
       editor: null,
       selectedBlock: null,
       setEditor: () => undefined,

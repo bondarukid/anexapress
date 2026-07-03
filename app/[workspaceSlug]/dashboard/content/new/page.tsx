@@ -11,5 +11,5 @@ export default async function WorkspaceContentNewRedirectPage({ params }: PagePr
   const routeParams = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  await redirectToDefaultSiteSection(routeParams, user.id, "/content/new");
+  await redirectToDefaultSiteSection(routeParams, user.id, "/content");
 }

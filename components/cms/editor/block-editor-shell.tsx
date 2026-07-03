@@ -11,7 +11,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 
 type BlockEditorWorkspaceProps = {
   editor: ReactNode;
-  documentSettings: ReactNode;
+  documentSettings?: ReactNode | null;
   documentLabel?: string;
 };
 
@@ -27,7 +27,10 @@ export function BlockEditorWorkspace({
   const { scrollContainer, scrollRef } = useEditorScrollRef();
 
   return (
-    <EditorInspectorProvider documentLabel={documentLabel}>
+    <EditorInspectorProvider
+      documentLabel={documentLabel}
+      hasDocumentSettings={documentSettings != null}
+    >
       <SidebarProvider
         open={inspectorOpen}
         onOpenChange={setInspectorOpen}

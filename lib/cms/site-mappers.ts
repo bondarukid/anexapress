@@ -1,4 +1,10 @@
-import type { Site, SiteLayout, SitePage, SitePageVersion } from "@/types/site";
+import type {
+  Site,
+  SiteLayout,
+  SitePage,
+  SitePageVersion,
+  SiteVerificationMetaTag,
+} from "@/types/site";
 import type { HeaderConfig, FooterConfig, ThemeConfig } from "@/schemas/site-layout.schema";
 import { DEFAULT_FOOTER_CONFIG, DEFAULT_HEADER_CONFIG } from "@/schemas/site-layout.schema";
 
@@ -13,9 +19,32 @@ type SiteRow = {
   seo_default_title: string | null;
   seo_default_description: string | null;
   seo_default_og_image_id: string | null;
+  verification_meta_tags: unknown;
   created_at: string;
   updated_at: string;
 };
+
+function mapVerificationMetaTags(raw: unknown): SiteVerificationMetaTag[] {
+  if (!Array.isArray(raw)) return [];
+
+  const tags: SiteVerificationMetaTag[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const provider = record.provider;
+    const name = record.name;
+    const content = record.content;
+    if (
+      typeof name !== "string" ||
+      typeof content !== "string" ||
+      (provider !== "google" && provider !== "bing" && provider !== "other")
+    ) {
+      continue;
+    }
+    tags.push({ provider, name, content });
+  }
+  return tags;
+}
 
 type SitePageRow = {
   id: string;
@@ -72,6 +101,7 @@ export function mapSiteRow(row: SiteRow): Site {
     seoDefaultTitle: row.seo_default_title,
     seoDefaultDescription: row.seo_default_description,
     seoDefaultOgImageId: row.seo_default_og_image_id,
+    verificationMetaTags: mapVerificationMetaTags(row.verification_meta_tags),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

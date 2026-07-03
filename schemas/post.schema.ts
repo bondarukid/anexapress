@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { workspaceSlugRegex } from "@/schemas/workspace.schema";
 import { seoFieldsSchema } from "@/schemas/seo.schema";
+import { postDisplayFieldsSchema } from "@/schemas/post-display.schema";
 import { tiptapContentSchema } from "@/schemas/tiptap-content.schema";
+
+export const postStatusSchema = z.enum(["draft", "published", "archived"]);
 
 export const postSlugSchema = z
   .string()
@@ -29,8 +32,11 @@ export const saveDraftSchema = z.object({
   postId: z.string().uuid(),
   workspaceId: z.string().uuid(),
   title: z.string().min(1).max(200).optional(),
+  slug: postSlugSchema.optional(),
   content: tiptapContentSchema,
   seo: seoFieldsSchema.optional(),
+  display: postDisplayFieldsSchema.optional(),
+  status: postStatusSchema.optional(),
 });
 
 export const publishPostSchema = z.object({

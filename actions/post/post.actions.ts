@@ -19,7 +19,7 @@ import {
   revertToVersion,
   deletePost,
 } from "@/services/post.service";
-import type { PostActionResult, RevertedDraftData } from "@/types/post";
+import type { PostActionResult, PostStatus, RevertedDraftData } from "@/types/post";
 
 async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -49,7 +49,16 @@ export async function createPostAction(
   return createPost(userId, parsed.data);
 }
 
-export async function saveDraftAction(input: unknown): Promise<PostActionResult<{ savedAt: string }>> {
+export async function saveDraftAction(
+  input: unknown,
+): Promise<
+  PostActionResult<{
+    savedAt: string;
+    status: PostStatus;
+    slug: string;
+    hasUnpublishedChanges: boolean;
+  }>
+> {
   const userId = await getUserId();
   if (!userId) {
     return { success: false, error: "Session expired. Please sign in again." };
@@ -65,7 +74,7 @@ export async function saveDraftAction(input: unknown): Promise<PostActionResult<
   }
 
   const result = await saveDraft(userId, parsed.data);
-  if (result.success) {
+  if (result.success && parsed.data.display && !result.data.hasUnpublishedChanges) {
     revalidatePath("/", "layout");
   }
   return result;

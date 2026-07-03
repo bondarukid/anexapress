@@ -17,10 +17,10 @@ export const EDITOR_HIGHLIGHT_COLORS: EditorColorPreset[] = [
 
 export const EDITOR_TEXT_COLORS: EditorColorPreset[] = [
   { name: "Default", value: "" },
-  { name: "Slate", value: "#334155" },
-  { name: "Red", value: "#dc2626" },
-  { name: "Orange", value: "#ea580c" },
-  { name: "Green", value: "#16a34a" },
-  { name: "Blue", value: "#2563eb" },
-  { name: "Purple", value: "#9333ea" },
+  { name: "Muted", value: "var(--muted-foreground)" },
+  { name: "Accent", value: "var(--primary)" },
+  { name: "Destructive", value: "var(--destructive)" },
+  { name: "Success", value: "var(--success)" },
+  { name: "Warning", value: "var(--warning)" },
+  { name: "Info", value: "var(--info)" },
 ];

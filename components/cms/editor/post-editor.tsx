@@ -39,6 +39,10 @@ import { Separator } from "@/components/ui/separator";
 import { cmsContentTypographyClassName } from "@/lib/cms/content-typography";
 import { insertAtomBlockWithTrailingParagraph } from "@/lib/cms/editor-insert-helpers";
 import { createEditorImageUpload } from "@/lib/cms/editor-image-upload";
+import {
+  stripPastedHtmlFormatting,
+  stripPastedSliceMarks,
+} from "@/lib/cms/strip-pasted-formatting";
 import { sanitizeTiptapContent } from "@/lib/cms/sanitize-tiptap-content";
 import { cn } from "@/lib/utils";
 import type { TiptapContent } from "@/types/tiptap";
@@ -53,6 +57,7 @@ export type PostEditorImageAttrs = {
 
 export type PostEditorHandle = {
   insertImage: (attrs: PostEditorImageAttrs) => void;
+  insertYoutube: (src: string) => void;
 };
 
 type PostEditorProps = {
@@ -61,6 +66,7 @@ type PostEditorProps = {
   workspaceId: string;
   siteId?: string | null;
   onImageRequest?: () => void;
+  onYoutubeRequest?: () => void;
   className?: string;
 };
 
@@ -85,6 +91,13 @@ function EditorBridge({ editorRef }: EditorBridgeProps) {
           },
         });
       },
+      insertYoutube: (src) => {
+        if (!editor) return;
+        insertAtomBlockWithTrailingParagraph(editor, {
+          type: "youtube",
+          attrs: { src },
+        });
+      },
     }),
     [editor],
   );
@@ -102,6 +115,7 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(function
     workspaceId,
     siteId,
     onImageRequest,
+    onYoutubeRequest,
     className,
   },
   ref,
@@ -115,8 +129,9 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(function
   const extensionOptions = useMemo(
     () => ({
       onImageRequest,
+      onYoutubeRequest,
     }),
-    [onImageRequest],
+    [onImageRequest, onYoutubeRequest],
   );
 
   const extensions = useMemo(
@@ -157,6 +172,8 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(function
           },
           handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
           handlePaste: (view, event) => handleImagePaste(view, event, uploadFn),
+          transformPastedHTML: (html) => stripPastedHtmlFormatting(html),
+          transformPasted: (slice) => stripPastedSliceMarks(slice),
           attributes: {
             class: cmsContentTypographyClassName(
               "min-h-[50vh] focus:outline-none",

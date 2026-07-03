@@ -19,7 +19,8 @@ export default async function SiteBlogIndexPage({ params }: SiteBlogIndexProps) 
 
   return (
     <BlogIndexView
-      title={blogPage?.title ?? "Blog"}
+      heading={blogPage?.title ?? "Blog"}
+      description={blogPage?.seoDescription ?? resolved.site.seoDefaultDescription}
       posts={posts}
       basePath={`/${workspaceSlug}/${siteSlug}`}
     />

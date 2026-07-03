@@ -16,6 +16,7 @@ export type Post = {
   id: string;
   workspaceId: string;
   slug: string;
+  /** On-page H1 in the post header — not `seoTitle`. */
   title: string;
   status: PostStatus;
   publishedAt: string | null;
@@ -24,6 +25,11 @@ export type Post = {
   seoCanonical: string | null;
   seoKeywords: string[];
   ogImageId: string | null;
+  /** On-page subtitle in the post header — not `seoDescription`. */
+  description: string | null;
+  authorName: string | null;
+  authorAvatarId: string | null;
+  usePostDescriptionForSeo: boolean;
   currentDraftVersionId: string | null;
   publishedVersionId: string | null;
   siteId: string | null;
@@ -39,6 +45,14 @@ export type PostSummary = Pick<
   "id" | "slug" | "title" | "status" | "publishedAt" | "updatedAt" | "createdAt"
 > & {
   siteId?: string | null;
+};
+
+/** Published post row for public blog index cards. */
+export type BlogPostListItem = PostSummary & {
+  summary: string | null;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+  coverImageUrl: string | null;
 };
 
 export type PostVersion = {
@@ -62,6 +76,7 @@ export type PostVersionSummary = Pick<
 export type PublishedPost = Post & {
   content: TiptapContent;
   ogImageUrl: string | null;
+  authorAvatarUrl: string | null;
 };
 
 export type PostEditorData = {
@@ -69,12 +84,17 @@ export type PostEditorData = {
   draftVersion: PostVersion;
   canPublish: boolean;
   canCreate: boolean;
+  authorAvatarUrl: string | null;
+  /** True when draft content differs from the last published version. */
+  hasUnpublishedChanges: boolean;
 };
 
 export type RevertedDraftData = {
   content: TiptapContent;
   title: string;
   seo: import("@/schemas/seo.schema").SeoFieldsInput;
+  display: import("@/schemas/post-display.schema").PostDisplayFieldsInput;
+  authorAvatarUrl: string | null;
 };
 
 export type PostActionResult<T = undefined> =
